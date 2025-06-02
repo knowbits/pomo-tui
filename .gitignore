@@ -1,0 +1,27 @@
+# Runtime data (you can remove this if you prefer to track it)
+pomodoro-tracker.json
+
+# Build results
+bin/
+obj/
+
+# Backup files (not needed in version control)
+# Program.fs.ORIGINAL
+
+# Visual Studio temporary files, build results, and
+# user-specific files
+.vs/
+*.user
+*.suo
+
+# NuGet Packages
+*.nupkg
+packages/
+
+# OS generated files (macOS, Windows)
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+

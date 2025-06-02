@@ -1,0 +1,10 @@
+# Set all files to be normalized by Git
+* text=auto
+
+# Force LF line endings for F# source files, project files, and shell scripts
+*.fs text eol=lf
+*.fsx text eol=lf
+*.fsproj text eol=lf
+*.props text eol=lf
+*.sh text eol=lf
+
