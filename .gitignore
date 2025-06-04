@@ -4,6 +4,7 @@ pomodoro-tracker.json
 # Build results
 bin/
 obj/
+publish/
 
 # Backup files (not needed in version control)
 # Program.fs.ORIGINAL

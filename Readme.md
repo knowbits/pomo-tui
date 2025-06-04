@@ -2,20 +2,24 @@
 
 ## Installation
 
-0. Install the DotNet SDK 8.0 on Ubuntu:
+1. Install the DotNet SDK 8.0 on Ubuntu:
   - `sudo apt update`
   - `sudo apt install dotnet-sdk-8.0`
   - NOTE: it requires ~ 450MB (as of May 2025)
 
-1. Clone this repository:
-  - `git glone https://github.com/knowbits/pomo-tui.git`
+2. Clone this repository:
+  - `git clone https://github.com/knowbits/pomo-tui.git`
 
-2. In the repository, run `$ dotnet publish --runtime linux-x64 --self-contained --configuration Release --output ~/.local/bin/pomo-tui/`
-3. Add `~/.local/bin/pomo-tui/` to `$PATH` in `~/.bashrc` by adding this line:
-  - `export PATH="$HOME/.local/bin/pomo-tui:$PATH"`
+3. In the repository, run these commands:
+  ```bash
+  # First publish to a local directory
+  dotnet publish --runtime linux-x64 --self-contained --configuration Release -p:PublishSingleFile=true --output ./publish/
 
-4. Run `source ~/.bashrc` to update `$PATH`
-5. Run `pomo-tui` to verify that the TUI has been installed and is in `$PATH`
+  # Then copy the binary to ~/.local/bin with correct permissions
+  sudo cp ./publish/pomo-tui ~/.local/bin/
+  sudo chmod +x ~/.local/bin/pomo-tui
+  ```
+4. Run `pomo-tui` to verify that the TUI has been installed and is in `$PATH`
 
 ## Usage
 
@@ -31,5 +35,3 @@
 ## Concepts
 
 - See the comment block in `Program.fs` for further explanations of the TUI.
-
-
