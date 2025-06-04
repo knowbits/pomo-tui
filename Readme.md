@@ -1,5 +1,8 @@
 # pomo-tui - A terminal based TUI for The Pomodoro Technique
 
+> Inspired by the "pomodori-cli" (pom) CLI utility by NRK.no
+> Repo: https://github.com/nrkno/pomodoro-cli
+
 ## Installation
 
 1. Install the DotNet SDK 8.0 on Ubuntu:
