@@ -5,10 +5,11 @@ pomodoro-tracker.json
 target/
 
 # Backup files (not needed in version control)
-# Program.fs.ORIGINAL
+#
 
 # Visual Studio temporary files, build results, and
 # user-specific files
+.vscode-extensions/
 .vs/
 *.user
 *.suo
@@ -24,3 +25,5 @@ Thumbs.db
 # Log files
 *.log
 
+
+.fake

@@ -1,0 +1,23 @@
+// F# IntelliSense, debugging, project management
+Ionide.Ionide-fsharp
+
+// Dependency management with Paket
+// Ionide.Ionide-Paket
+
+// FAKE build automation support
+// Ionide.Ionide-FAKE
+
+// .NET development tools, debugging, project management
+// ms-dotnettools.vscode-dotnet-pack
+
+// AI-powered coding assistance
+github.copilot, USE-PRE-RELEASE
+
+// AI chat features powered by Copilot
+github.copilot-chat, USE-PRE-RELEASE
+
+// Enhanced Markdown editing and formatting
+yzhang.markdown-all-in-one
+
+// Shell script linting and static analysis
+// timonwong.shellcheck
