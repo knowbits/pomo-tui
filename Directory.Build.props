@@ -1,0 +1,7 @@
+<!-- Directory.Build.props -->
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)target/obj/</BaseIntermediateOutputPath>
+    <OutputPath>$(MSBuildThisFileDirectory)target/bin/</OutputPath>
+  </PropertyGroup>
+</Project>

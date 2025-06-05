@@ -1,40 +1,44 @@
-# pomo-tui - A terminal based TUI for The Pomodoro Technique
+# pomo-tui - A terminal utility for "The Pomodoro Technique"
 
 > Inspired by the "pomodori-cli" (pom) CLI utility by NRK.no
-> Repo: https://github.com/nrkno/pomodoro-cli
+
+> Repo: <https://github.com/nrkno/pomodoro-cli>
+
 
 ## Installation
 
-1. Install the DotNet SDK 8.0 on Ubuntu:
+### Ubuntu
+
+1. Install "DotNet SDK" version 8.0 on Ubuntu:
   - `sudo apt update`
   - `sudo apt install dotnet-sdk-8.0`
-  - NOTE: it requires ~ 450MB (as of May 2025)
+  - NOTE: The installation requires ~ 450MB.
 
 2. Clone this repository:
   - `git clone https://github.com/knowbits/pomo-tui.git`
 
-3. In the repository, run these commands:
-  ```bash
-  # First publish to a local directory
-  dotnet publish --runtime linux-x64 --self-contained --configuration Release -p:PublishSingleFile=true --output ./publish/
+3. In the local repository, run these commands:
 
-  # Then copy the binary to ~/.local/bin with correct permissions
-  sudo cp ./publish/pomo-tui ~/.local/bin/
+  ```bash
+  # 1. Publish the binary to the ./target/ folder
+  dotnet publish --runtime linux-x64 --self-contained --configuration Release --output ./target/
+
+  # 2. Copy the binary to ~/.local/bin/ and set executable permissions
+  sudo cp ./target/pomo-tui ~/.local/bin/
   sudo chmod +x ~/.local/bin/pomo-tui
   ```
-4. Run `pomo-tui` to verify that the TUI has been installed and is in `$PATH`
 
 ## Usage
 
-- Run `pomo-tui` to start the TUI
-  - A menu of all the available keyboard **commands** will be shown in the Terminal window.
+- Run `pomo-tui` in a terminal to start the Pomodoro TUI
+  - A menu of all the available keyboard **commands** will be shown in the terminal.
 
 - Command-line options to `pomo-tui`:
   - `--sound-alert`         : Enable sound alerts (Is OFF by default)
-  - `--task-length-min [n]` : Set the work session length to *n* minutes (default is 25)
+  - `--task-length-min [n]` : Set the Pomodoro session length to *n* minutes (default is 25)
   - `--break-length-min [n]`: Set the break length to *n* minutes (default is 5)
 
 
 ## Concepts
 
-- See the comment block in `Program.fs` for further explanations of the TUI.
+- See the comment block in [Program.fs](./Program.fs) for further explanations of the terminal app.
