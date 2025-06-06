@@ -16,8 +16,11 @@ set -euo pipefail
 # Define the VS Code CLI command (change to 'code' if needed instead of 'code-insiders')
 VSCODE_COMMAND=code-insiders
 
+# Get the full path of this script's folder
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+
 # Set the local extensions directory (using an absolute path)
-LOCAL_EXTENSIONS_DIR="$(pwd)/.vscode-extensions"
+LOCAL_EXTENSIONS_DIR="${SCRIPT_DIR}/../.vscode-extensions"
 
 # Verify the local extensions directory exists.
 if [ ! -d "$LOCAL_EXTENSIONS_DIR" ]; then

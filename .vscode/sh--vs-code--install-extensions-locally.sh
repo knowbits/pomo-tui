@@ -31,13 +31,27 @@ YELLOW="\033[0;33m"
 BLUE="\033[0;34m"
 NC="\033[0m"  # No Color
 
+# Store deleted extensions
+declare -a deleted_extensions=()
+
 # Use VS Code Insiders CLI (change to "code" if needed)
 VSCODE=code-insiders
 
+# Get the full path of this script's folder
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+
 # Set the local extensions directory (absolute path)
-EXT_DIR="$(pwd)/.vscode-extensions"
+EXT_DIR="${SCRIPT_DIR}/../.vscode-extensions"
+
+# Get list of currently installed extensions before any changes
+declare -a initial_extensions=()
+if [ -d "$EXT_DIR" ]; then
+  while IFS= read -r line; do
+    initial_extensions+=( "$line" )
+  done < <("$VSCODE" --list-extensions --extensions-dir "$EXT_DIR")
+fi
 # Set the path to the mandatory extensions file
-EXT_FILE="$(pwd)/.vscode/mandatory-extensions.txt"
+EXT_FILE="${SCRIPT_DIR}/mandatory-extensions.txt"
 
 # Function to trim whitespace from a string.
 trim() {
@@ -108,6 +122,11 @@ install_extension() {
   local norm_id
   norm_id=$(echo "$ext_id" | tr '[:upper:]' '[:lower:]')
 
+  # Get version before installation (if extension exists)
+  local previous_version
+  previous_version=$("$VSCODE" --list-extensions --show-versions --extensions-dir "$EXT_DIR" \
+    | grep -i "^$(echo "$ext_id" | tr '[:upper:]' '[:lower:]')@" | cut -d'@' -f2 || echo "")
+
   if [ -n "$extra_flag" ]; then
     echo -e "${BLUE}Installing ${ext_id} with pre-release...${NC}"
   else
@@ -133,7 +152,18 @@ install_extension() {
   local installed_version
   installed_version=$("$VSCODE" --list-extensions --show-versions --extensions-dir "$EXT_DIR" \
     | grep -i "^$(echo "$ext_id" | tr '[:upper:]' '[:lower:]')@" | cut -d'@' -f2 || echo "unknown")
-  results+=("$ext_id|Installed|$installed_version")
+
+  # Change status determination logic
+  local status
+  if [ -z "$previous_version" ]; then
+    status="NEW"
+  elif [ "$previous_version" != "$installed_version" ]; then
+    status="UPDATED"
+  else
+    status="-"
+  fi
+
+  results+=("$ext_id|$status|$installed_version")
 }
 
 # Process each entry from the mandatory file.
@@ -206,21 +236,47 @@ done
 
 # Get a complete list of installed extensions (normalized) from the CLI.
 declare -a installedList
+declare -a extraExtensions=()
 while IFS= read -r line; do
    installedList+=( "$(echo "$line" | tr '[:upper:]' '[:lower:]')" )
 done < <("$VSCODE" --list-extensions --extensions-dir "$EXT_DIR")
 
-# Identify extra extensions: those installed but not explicitly in the mandatory set.
-declare -a extraExtensions
-for inst in "${installedList[@]}"; do
-  if [[ -z "${mandatorySet[$inst]:-}" ]]; then
-    extraExtensions+=( "$inst" )
+# Identify extra extensions: those installed but not explicitly in the mandatory set or deleted
+if [ ${#installedList[@]} -gt 0 ]; then
+  for inst in "${installedList[@]}"; do
+    # Skip if it's in mandatory set or deleted extensions
+    is_deleted=false
+    for del in "${deleted_extensions[@]}"; do
+      if [[ "${del,,}" == "${inst,,}" ]]; then
+        is_deleted=true
+        break
+      fi
+    done
+
+    if [[ -n "${mandatorySet[$inst]:-}" ]] || $is_deleted; then
+      continue
+    fi
+
+    # Add if has a known status (dependency or in pack)
+    if [[ -n "${extra_status[$inst]:-}" ]]; then
+      extraExtensions+=( "$inst" )
+    fi
+  done
+fi
+
+# Check for extensions to delete
+for ext in "${initial_extensions[@]}"; do
+  ext_lower=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+  if [[ -z "${mandatorySet[$ext_lower]:-}" ]]; then
+    echo -e "${YELLOW}Removing deleted extension: $ext${NC}"
+    "$VSCODE" --extensions-dir "$EXT_DIR" --uninstall-extension "$ext"
+    deleted_extensions+=("$ext")
   fi
 done
 
 # ---------------------------------------------------------------
 # Print mandatory installation summary.
-echo -e "\nInstallation Summary:"
+echo -e "\n${GREEN}Installed extensions:${NC}"
 printf "%-40s %-30s %-20s\n" "Extension ID" "Status" "Version"
 printf '%.0s=' {1..100}; echo ""
 for res in "${results[@]}"; do
@@ -228,16 +284,35 @@ for res in "${results[@]}"; do
   printf "%-40s %-30s %-20s\n" "$id" "$status" "$version"
 done
 
+# Print deleted extensions summary if any were deleted
+if [[ ${#deleted_extensions[@]} -gt 0 ]]; then
+  echo -e "\n${RED}Deleted extensions:${NC}"
+  printf '%.0s=' {1..100}; echo ""
+  for ext in "${deleted_extensions[@]}"; do
+    printf "%-40s\n" "$ext"
+  done
+fi
+
 # Print extra (indirect) extensions summary.
 if [[ ${#extraExtensions[@]} -gt 0 ]]; then
-  echo -e "\n${YELLOW}Extra (Indirect) Extensions Installed:${NC}"
-  printf "${YELLOW}%-40s %-20s %-40s${NC}\n" "Extra Extension ID" "Status" "Parent Extension(s)"
+  echo -e "\n${YELLOW}'Indirect' extensions${NC} (dependency or part of pack):"
+  printf "%-40s %-20s %-40s\n" "Extra Extension ID" "Status" "Parent Extension(s)"
   printf '%.0s=' {1..100}; echo ""
   for extra in "${extraExtensions[@]}"; do
     stat=${extra_status[$extra]:-"unknown"}
     parent=${extra_parent[$extra]:-"none"}
-    printf "${YELLOW}%-40s %-20s %-40s${NC}\n" "$extra" "$stat" "$parent"
+    printf "%-40s %-20s %-40s\n" "$extra" "$stat" "$parent"
   done
 fi
 
-echo -e "\n${BLUE}=== Installation Complete ===${NC}\n"
+# Save a pretty-printed copy of extensions.json if it exists
+if [ -f "$EXT_DIR/extensions.json" ]; then
+    echo -e "\n${BLUE}Saving pretty-printed copy of extensions.json...${NC}"
+    if jq '.' "$EXT_DIR/extensions.json" > "$EXT_DIR/extensions-pretty-printed.json"; then
+        echo -e "${GREEN}Successfully saved $EXT_DIR/extensions-pretty-printed.json${NC}"
+    else
+        echo -e "${RED}Failed to create pretty-printed copy of extensions.json${NC}"
+    fi
+fi
+
+echo -e "\n=== Installation Complete ===\n"
