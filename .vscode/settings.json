@@ -1,0 +1,276 @@
+{
+  // Main benefits of disabling "git" in VS COde:
+  //  - Performance: Faster VS Code, less background processing.
+  //  - Clean UI: No Git status, markers, or prompts.
+  //  - Consistency: Same workflow across tools/editors.
+  //  - Advanced Features: Full Git power via CLI/tools.
+  //  - Lower Resource Use: Less CPU/memory.
+  //  - No Conflicts: Avoid VS Code vs. external Git state issues.
+
+  "git.enabled": false, // Disable Git integration in VSCode
+  // "git.autorefresh": false, // Disable auto-refresh of Git repositories
+  // "git.confirmSync": false, // Disable confirmation dialog for Git sync operations
+  // "git.ignoreLimitWarning": true, // Ignore warnings about large Git repositories
+  // "git.autofetch": false, // Disable auto-fetching of Git repositories
+  // "git.enableSmartCommit": false, // Disable smart commit feature in Git
+  // "git.enableCommitSigning": false, // Disable commit signing in Git
+
+  // --------------------------------------------------------------
+
+  // List all files to be excluded from the workspace
+  "files.exclude": {
+    "**/.vscode-extensions": true,
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    // "**/node_modules": true,
+    "**/__pycache__": true,
+    ".venv/": true,
+    // .NET specific exclusions
+    "**/bin/**": true,
+    "**/obj/**": true,
+    "**/*.fsproj.user": true,
+    "**/*.csproj.user": true,
+    "**/packages/**": true,
+    "**/.vs/**": true
+  },
+
+  // List all files to be excluded from "watcher" (file system watcher)
+  // This is useful to prevent the editor from watching large directories
+  // that can cause performance issues, such as node_modules or .git directories.
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/.vscode-extensions/*/**": true,
+    // "**/node_modules/*/**": true,
+    "**/.hg/store/**": true,
+    ".venv/": true,
+    // .NET specific watcher exclusions
+    "**/bin/**": true,
+    "**/obj/**": true,
+    "**/packages/**": true,
+    "**/.vs/**": true
+  },
+
+  // F#-specific language settings
+  "[fsharp]": {
+    "editor.defaultFormatter": "Ionide.Ionide-fsharp",
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": false,
+    "editor.formatOnPaste": true
+  },
+
+  // C#-specific settings (for mixed projects)
+  "[csharp]": {
+    "editor.defaultFormatter": "ms-dotnettools.csharp",
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false,
+    "editor.formatOnSave": true
+  },
+
+
+  // File associations for F# files
+  "files.associations": {
+    "Justfile": "just",
+    "Makefile": "make",
+    "Dockerfile": "dockerfile",
+    "docker-compose.yml": "docker-compose",
+
+    // F# file associations
+    "*.fs": "fsharp",
+    "*.fsi": "fsharp",
+    "*.fsx": "fsharp",
+    "*.fsscript": "fsharp",
+
+    // .NET project files
+    "*.fsproj": "xml",
+    "*.csproj": "xml",
+    "*.sln": "plaintext"
+  },
+
+  // Ionide F# extension settings
+  "FSharp.enableTreeView": true,
+  "FSharp.enableMSBuildProjectGraph": true,
+  "FSharp.workspaceModePeekDeepLevel": 2,
+  "FSharp.workspacePath": "${workspaceFolder}",
+  "FSharp.excludeProjectDirectories": [
+    ".git",
+    "paket-files",
+    ".fable",
+    "packages",
+    "node_modules",
+    "bin",
+    "obj",
+    ".vscode-extensions",
+  ],
+
+  // OmniSharp settings (C# extension - also helps with .NET SDK)
+  "omnisharp.enableEditorConfigSupport": true,
+  "omnisharp.useModernNet": true,
+  "omnisharp.enableMsBuildLoadProjectsOnDemand": true,
+
+  // .NET related settings
+  "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+  "dotnet.codeLens.enableReferencesCodeLens": false, // Matches your codeLens: false preference
+
+  // Terminal settings for .NET CLI
+  "terminal.integrated.env.windows": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+  },
+  "terminal.integrated.env.osx": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+  },
+  "terminal.integrated.env.linux": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+  },
+
+  // --------------------------------------------------------------
+  // General editor settings
+
+  "editor.cursorBlinking": "smooth", // Smooth cursor blinking
+  "editor.cursorStyle": "line", // Use a line cursor style
+  "editor.cursorWidth": 2, // Set the width of the cursor
+  "editor.tabCompletion": "on", // Enable tab completion
+  "editor.suggestSelection": "first", // Select the first suggestion by default
+  "editor.snippetSuggestions": "top", // Show snippet suggestions at the top
+  "editor.quickSuggestions": {
+    "other": true, // Enable suggestions for other content (e.g., comments)
+    "comments": true, // Enable suggestions in comments
+    "strings": true // Enable suggestions in strings
+  },
+
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 30000, // Auto-save after 30 seconds
+
+  "files.trimTrailingWhitespace": true, // Trim trailing whitespace on save
+  "files.insertFinalNewline": true, // Insert a final newline at the end of the file on save
+  "files.trimFinalNewlines": true, // Trim final newlines on save
+  "files.eol": "\n", // Use LF (Unix-style) line endings by default
+  "files.defaultLanguage": "plaintext", // Default language for new files
+
+
+  // "false": prevents the Explorer view from automatically revealing the currently open file.
+  // "focusNoScroll", which focuses on the file but does not scroll the Explorer.
+  "explorer.autoReveal": false, // CTRL+SH+P: "Reveal Active File in Sidebar"
+
+  "editor.minimap.enabled": false,
+  // "editor.minimap.renderCharacters": true, // Render characters in the minimap
+  // "editor.minimap.maxColumn": 120, // Set the maximum column width for the minimap
+  // "editor.minimap.showSlider": "mouseover", // Show the minimap slider on mouseover
+
+  "search.useIgnoreFiles": true, // Search respects "ignore files" like .gitignore
+
+  // CodeLens in Visual Studio Code provides actionable contextual information directly within
+  // your source code. It appears as small links above functions, methods, or classes, offering
+  // insights like reference counts, code changes, linked bugs, work items, code reviews, and unit tests
+  "editor.codeLens": false,
+
+  "editor.guides.bracketPairs": true, // Show bracket pair guides in the editor
+  "editor.guides.highlightActiveBracketPair": true, // Highlight the active bracket pair
+  // "editor.guides.bracketPairsHorizontal": true, // Show horizontal bracket pair guides
+  // Disable bracket pair colorization to improve performance
+  "editor.bracketPairColorization.enabled": false,
+
+  // ----------------------------------------------
+  // Editor settings: Word wrap and Rulers
+  "editor.wordWrap": "on", // Enable word wrap
+  "editor.wordWrapColumn": 120, // Set the column at which to wrap lines
+  "editor.rulers": [ 80, 100, 120 ], // Show vertical rulers at columns 80, 100, and 120
+
+  // ----------------------------------------------
+  // Editor settings: Line numbers, highlighting, and character rendering
+  "editor.lineNumbers": "on", // Show line numbers
+  "editor.renderLineHighlight": "line", // Highlight the current line. "gutter" or "line"
+  // "editor.renderLineHighlightOnlyWhenFocus": true, // Only highlight the current line when the editor is focused
+  "editor.renderWhitespace": "boundary", // Show whitespace characters at boundaries
+  "editor.renderControlCharacters": false, // Do not render control characters
+
+  // ----------------------------------------------
+  // Editor settings: Scrolling and scrollbar
+  "editor.scrollBeyondLastColumn": 5, // Scroll beyond the last column by 5 characters
+  "editor.scrollBeyondLastLine": true, // Scroll beyond the last line
+
+  "editor.scrollbar.vertical": "visible", // Always show the vertical scrollbar
+  "editor.scrollbar.horizontal": "visible", // Always show the horizontal scrollbar
+  "editor.scrollbar.verticalScrollbarSize": 14, // Set the size of the vertical scrollbar
+  "editor.scrollbar.horizontalScrollbarSize": 14, // Set the size of the horizontal scrollbar
+
+  // ----------------------------------------------
+  // Cursor style settings
+
+  // "editor.cursorBlinking": "smooth", // Smooth cursor blinking
+  // "editor.cursorStyle": "line", // Use a line cursor style
+  // "editor.cursorWidth": 2, // Set the width of the cursor
+
+  // ---------------------------------------------
+  // Editor appearance settings - Workbench settings
+  "workbench.startupEditor": "none",
+  "workbench.editor.showTabs": "none", // Show tabs in the editor
+  // "workbench.editor.tabSizing": "shrink", // Shrink tabs to fit their content
+
+  // "workbench.colorTheme": "Default Dark+",
+  // "workbench.iconTheme": "vscode-icons",
+
+  // "workbench.statusBar.visible": true, // Show the status bar
+  // "workbench.sideBar.location": "left", // Show the sidebar on the left side
+  // "workbench.editor.enablePreview": true, // Enable preview mode for editors
+
+  // ---------------------------------------------
+  // Font settings
+
+  // "editor.fontSize": 14, // Set the font size for the editor
+  // "editor.lineHeight": 22, // Set the line height for the editor
+  // "editor.fontFamily": "Fira Code, monospace, 'Fira Mono', 'Consolas', 'DejaVu Sans Mono', 'Ubuntu Mono', 'Source Code Pro', 'Inconsolata', 'Courier New'",  // Use Fira Code font
+  // "editor.fontFamily": "Fira Code, monospace", // Use Fira Code font
+  // "editor.fontLigatures": true, // Enable font ligatures
+  // "editor.fontSize": 14, // Set the font size for the editor
+  // "editor.lineHeight": 22, // Set the line height for the editor
+
+  // ----------------------------------------------
+  // Editor settings: Suggestions and completions
+
+  // "editor.tabCompletion": "on", // Enable tab completion: suggestions will be shown when you press Tab
+  // "editor.suggestSelection": "first", // Select the first suggestion by default, when suggestions are shown, so you can quickly accept it with Enter
+  // "editor.snippetSuggestions": "top", // Show snippet suggestions at the top
+  // "editor.quickSuggestions": {
+  //   "other": true, // Enable suggestions for other content (e.g., comments)
+  //   "comments": true, // Enable suggestions in comments
+  //   "strings": true // Enable suggestions in strings
+  // },
+  // "editor.suggestOnTriggerCharacters": true, // Enable suggestions when typing trigger characters (e.g., dot, space)
+  // "editor.acceptSuggestionOnEnter": "on", // Accept suggestions with Enter key
+  // "editor.acceptSuggestionOnCommitCharacter": true, // Accept suggestions when typing commit characters (e.g., dot, space)
+  // "editor.parameterHints.enabled": true, // Enable parameter hints when typing function calls
+  // "editor.inlineSuggest.enabled": true, // Enable inline suggestions (experimental feature)
+
+  // ---------------------------------------------
+  // Editor settings: Indentation and formatting
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  "editor.formatOnType": false,
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true, // Format code on save
+
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false, // Disable automatic detection of indentation. This allows you to use a consistent tab size across all files. Only applies to TAB characters, not spaces. Only applies to files that do not have a specific indentation setting. Only valid if "editor.insertSpaces" is false.
+  "editor.insertSpaces": true, // Generally, will insert spaces when pressing Tab. This is the default setting for most languages, but some languages (like Justfile and Python) requires tabs.
+  "editor.autoIndent": "full", // Enable full auto-indentation, which means that the editor will automatically adjust the indentation of new lines based on the previous line's indentation. This is useful for languages that require indentation, such as Python and Justfile.
+
+
+  // -------------------------------------------------------------
+  // File associations
+
+  "[just]": {
+    //  Justfile requires TAB for indentation, not SPACEs.
+    "editor.insertSpaces": false,
+    "editor.detectIndentation": false
+  },
+
+}

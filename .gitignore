@@ -3,12 +3,12 @@ pomodoro-tracker.json
 
 # Build results
 target/
+.fake
 
-# Backup files (not needed in version control)
-#
 
-# Visual Studio temporary files, build results, and
-# user-specific files
+# Visual Studio temporary files, build results, and user-specific files
+script--vscode--update-local-extensions
+script--vscode--open-editor-with-local-extensions
 .vscode-extensions/
 .vs/
 *.user
@@ -25,5 +25,5 @@ Thumbs.db
 # Log files
 *.log
 
-
-.fake
+# Backup files (not needed in version control)
+*.bak

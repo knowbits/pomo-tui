@@ -22,6 +22,12 @@ SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 # Set the local extensions directory (using an absolute path)
 LOCAL_EXTENSIONS_DIR="${SCRIPT_DIR}/../.vscode-extensions"
 
+# Set the project's root folder (using an absolute path)
+PROJECT_ROOT="${SCRIPT_DIR}/../"
+
+# Capture the parameters / options to the script
+SCRIPT_PARAMETERS="$@"
+
 # Verify the local extensions directory exists.
 if [ ! -d "$LOCAL_EXTENSIONS_DIR" ]; then
     echo "Local extensions directory '$LOCAL_EXTENSIONS_DIR' does not exist. Exiting."
@@ -32,4 +38,4 @@ echo "Starting VS Code with local extensions directory: $LOCAL_EXTENSIONS_DIR"
 
 # Launch VS Code with the specified extensions directory.
 # All additional command-line arguments are passed on to VS Code.
-exec "$VSCODE_COMMAND" --extensions-dir "$LOCAL_EXTENSIONS_DIR" "$@"
+exec "$VSCODE_COMMAND" --extensions-dir "$LOCAL_EXTENSIONS_DIR" "$PROJECT_ROOT" "$SCRIPT_PARAMETERS"

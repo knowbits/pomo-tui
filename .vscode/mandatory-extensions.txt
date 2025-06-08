@@ -7,6 +7,12 @@ Ionide.Ionide-fsharp
 // FAKE build automation support
 // Ionide.Ionide-FAKE
 
+// Microsoft's official C# extension:
+// Provides general .NET development tools and debugging capabilities
+// that can be beneficial for F# projects as well, especially when
+// working in mixed C#/F# solutions or dealing with .NET SDK issues.
+ms-dotnettools.csharp
+
 // .NET development tools, debugging, project management
 // ms-dotnettools.vscode-dotnet-pack
 
@@ -15,6 +21,15 @@ github.copilot, USE-PRE-RELEASE
 
 // AI chat features powered by Copilot
 github.copilot-chat, USE-PRE-RELEASE
+
+// RooCode: AI Assistant
+// RooVeterinaryInc.roo-cline
+
+// Formatting Justfile ("just" make tool)
+TobiasHochguertel.just-formatter
+
+// Prettier: default formatter
+esbenp.prettier-vscode
 
 // Enhanced Markdown editing and formatting
 yzhang.markdown-all-in-one
