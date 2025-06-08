@@ -19,42 +19,35 @@
 
   // List all files to be excluded from the workspace
   "files.exclude": {
-    "**/.vscode-extensions": true,
-    "**/.git": true,
-    "**/.svn": true,
-    "**/.hg": true,
-    "**/CVS": true,
-    "**/.DS_Store": true,
-    "**/Thumbs.db": true,
-    // "**/node_modules": true,
-    "**/__pycache__": true,
-    ".venv/": true,
+    ".vscode-extensions/": true,
+    "target/": true,
+    // git exclusions
+    ".git": true,
+    // "**/.DS_Store": true,
+    // "**/Thumbs.db": true,
     // .NET specific exclusions
-    "**/bin/**": true,
-    "**/obj/**": true,
-    "**/*.fsproj.user": true,
-    "**/*.csproj.user": true,
-    "**/packages/**": true,
-    "**/.vs/**": true
+    // "**/bin/**": true,
+    // "**/obj/**": true,
+    // "**/packages/**": true,
+    // "**/.vs/**": true
+    // "**/*.fsproj.user": true,
+    // "**/*.csproj.user": true,
   },
 
   // List all files to be excluded from "watcher" (file system watcher)
   // This is useful to prevent the editor from watching large directories
   // that can cause performance issues, such as node_modules or .git directories.
   "files.watcherExclude": {
-    "**/.git/objects/**": true,
-    "**/.git/subtree-cache/**": true,
-    "**/.vscode-extensions/*/**": true,
-    // "**/node_modules/*/**": true,
-    "**/.hg/store/**": true,
-    ".venv/": true,
+    ".vscode-extensions/": true,
     // .NET specific watcher exclusions
-    "**/bin/**": true,
-    "**/obj/**": true,
-    "**/packages/**": true,
-    "**/.vs/**": true
+    "target/": true,
+    // git related exclusions
+    ".git/": true,
+    // "**/.git/objects/**": true,
+    // "**/.git/subtree-cache/**": true,
   },
 
+  // --------------------------------------------------------------
   // F#-specific language settings
   "[fsharp]": {
     "editor.defaultFormatter": "Ionide.Ionide-fsharp",
@@ -210,8 +203,19 @@
   // "editor.cursorWidth": 2, // Set the width of the cursor
 
   // ---------------------------------------------
-  // Editor appearance settings - Workbench settings
-  "workbench.startupEditor": "none",
+  // Workbench settings
+
+
+  "workbench.localHistory.enabled": true,
+  "workbench.localHistory.maxFileEntries": 50,
+  "workbench.localHistory.maxFileSize": 256, // Maximum file size in KB for local history
+  "workbench.localHistory.exclude": {
+    ".vscode-extensions/": true,
+    "target/": true,
+    ".git/": true,
+  },
+
+  "workbench.startupEditor": "none", // "welcomePage",
   "workbench.editor.showTabs": "none", // Show tabs in the editor
   // "workbench.editor.tabSizing": "shrink", // Shrink tabs to fit their content
 

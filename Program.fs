@@ -47,15 +47,19 @@ open Spectre.Console
 // ------------------------------------------------------------
 let mutable taskLengthMin = 25
 let mutable breakLengthMin = 5
-let mutable taskDuration = taskLengthMin * 60   // seconds for a Work session
-let mutable breakDuration = breakLengthMin * 60   // seconds for a Break session
+let mutable taskDuration = taskLengthMin * 60 // seconds for a Work session
+let mutable breakDuration = breakLengthMin * 60 // seconds for a Break session
 let trackerPath = "pomodoro-tracker.json"
 let todayKey = DateTime.Now.ToString("yyyy-MM-dd")
 
 // ------------------------------------------------------------
 // Pomodoro States definition
 // ------------------------------------------------------------
-type PomodoroState = Work | Break | Pause | Idle
+type PomodoroState =
+    | Work
+    | Break
+    | Pause
+    | Idle
 
 // ------------------------------------------------------------
 // Global Variables
@@ -86,16 +90,22 @@ let mutable soundEnabled = false
 // ------------------------------------------------------------
 let loadPomodoroCount () =
     if File.Exists trackerPath then
-        let data = File.ReadAllText trackerPath |> JsonSerializer.Deserialize<Map<string,int>>
+        let data =
+            File.ReadAllText trackerPath |> JsonSerializer.Deserialize<Map<string, int>>
+
         match data.TryFind todayKey with
         | Some count -> count
         | None -> 0
-    else 0
+    else
+        0
 
 let savePomodoroCount count =
     let data =
-        if File.Exists trackerPath then File.ReadAllText trackerPath |> JsonSerializer.Deserialize<Map<string,int>>
-        else Map.empty
+        if File.Exists trackerPath then
+            File.ReadAllText trackerPath |> JsonSerializer.Deserialize<Map<string, int>>
+        else
+            Map.empty
+
     let updatedData = data.Add(todayKey, count)
     File.WriteAllText(trackerPath, JsonSerializer.Serialize(updatedData))
 
@@ -119,9 +129,10 @@ let beepBreakSession () =
 let beepIdleSession () =
     if soundEnabled then
         // 5 short beeps
-        for i in 1 .. 5 do
+        for i in 1..5 do
             AnsiConsole.Markup("[bold yellow]beep[/] ")
             Thread.Sleep(50)
+
         AnsiConsole.MarkupLine("")
 
 // ------------------------------------------------------------
@@ -140,11 +151,12 @@ let updateUI () =
     Console.Clear()
     // 1. Summary line (show times for each state in mm:ss).
     AnsiConsole.MarkupLine(
-      sprintf "[bold cyan]Summary:[/] Work: %s | Break: %s | Pause: %s | Idle: %s"
-              (formatTime totalWorkSeconds)
-              (formatTime totalBreakSeconds)
-              (formatTime totalPauseSeconds)
-              (formatTime totalIdleSeconds)
+        sprintf
+            "[bold cyan]Summary:[/] Work: %s | Break: %s | Pause: %s | Idle: %s"
+            (formatTime totalWorkSeconds)
+            (formatTime totalBreakSeconds)
+            (formatTime totalPauseSeconds)
+            (formatTime totalIdleSeconds)
     )
     // 2. Sessions Today line.
     let sessionsToday = String.replicate pomodoroCount "🍅"
@@ -163,16 +175,19 @@ let updateUI () =
               | _ -> "Paused"),
              formatTime pauseSessionSeconds)
         | Idle -> ("yellow", "Idle", formatTime idleSessionSeconds)
+
     AnsiConsole.MarkupLine(sprintf "[%s]%s[/] : %s" stateColor stateText timerDisplay)
 
     // 4. Bottom menu line with sound icon.
     let soundIcon = if soundEnabled then "🔔" else "🔕"
+
     let menuLine =
         match currentState with
-        | Idle  -> sprintf "%s Commands: s (start session) | h (help) | Esc (quit)" soundIcon
-        | Work  -> sprintf "%s Commands: p (pause) | Esc (cancel) | h (help)" soundIcon
+        | Idle -> sprintf "%s Commands: s (start session) | h (help) | Esc (quit)" soundIcon
+        | Work -> sprintf "%s Commands: p (pause) | Esc (cancel) | h (help)" soundIcon
         | Break -> sprintf "%s Commands: p (pause) | Esc (cancel) | h (help)" soundIcon
         | Pause -> sprintf "%s Commands: r (resume) | h (help)" soundIcon
+
     AnsiConsole.MarkupLine(sprintf "[bold cyan]%s[/]" menuLine)
 
 // ------------------------------------------------------------
@@ -197,16 +212,16 @@ let displayHelp () =
 let autoTransition () =
     match currentState with
     | Work when remainingTaskSeconds <= 0 ->
-         // Work session fully completed → count session, beep for Break.
-         beepBreakSession ()
-         currentState <- Break
-         remainingBreakSeconds <- breakDuration  // start Break countdown.
-         pomodoroCount <- pomodoroCount + 1
+        // Work session fully completed → count session, beep for Break.
+        beepBreakSession ()
+        currentState <- Break
+        remainingBreakSeconds <- breakDuration // start Break countdown.
+        pomodoroCount <- pomodoroCount + 1
     | Break when remainingBreakSeconds <= 0 ->
-         // End of Break → transition to Idle with idle beep.
-         beepIdleSession ()
-         currentState <- Idle
-         idleSessionSeconds <- 0  // reset idle counter.
+        // End of Break → transition to Idle with idle beep.
+        beepIdleSession ()
+        currentState <- Idle
+        idleSessionSeconds <- 0 // reset idle counter.
     | _ -> ()
 
 // ------------------------------------------------------------
@@ -218,52 +233,54 @@ let rec startLoop () =
     // Update timers & accumulate total time.
     match currentState with
     | Work ->
-         remainingTaskSeconds <- remainingTaskSeconds - 1
-         totalWorkSeconds <- totalWorkSeconds + 1
+        remainingTaskSeconds <- remainingTaskSeconds - 1
+        totalWorkSeconds <- totalWorkSeconds + 1
     | Break ->
-         remainingBreakSeconds <- remainingBreakSeconds - 1
-         totalBreakSeconds <- totalBreakSeconds + 1
+        remainingBreakSeconds <- remainingBreakSeconds - 1
+        totalBreakSeconds <- totalBreakSeconds + 1
     | Pause ->
-         pauseSessionSeconds <- pauseSessionSeconds + 1
-         totalPauseSeconds <- totalPauseSeconds + 1
+        pauseSessionSeconds <- pauseSessionSeconds + 1
+        totalPauseSeconds <- totalPauseSeconds + 1
     | Idle ->
-         idleSessionSeconds <- idleSessionSeconds + 1
-         totalIdleSeconds <- totalIdleSeconds + 1
+        idleSessionSeconds <- idleSessionSeconds + 1
+        totalIdleSeconds <- totalIdleSeconds + 1
 
     updateUI ()
 
     // Process key input if available.
     if Console.KeyAvailable then
         let keyInfo = Console.ReadKey(true)
+
         match currentState, keyInfo.Key with
         // ---------- Idle State ----------
         | Idle, ConsoleKey.S ->
             // Start a Work session from Idle.
             currentState <- Work
             remainingTaskSeconds <- taskDuration
-            idleSessionSeconds <- 0  // reset idle timer
+            idleSessionSeconds <- 0 // reset idle timer
             // Beep: 2 short beeps for starting a Work session.
             beepTaskSession ()
         | Idle, ConsoleKey.Escape ->
             Console.Write("Quit? (y/n): ")
-            if Console.ReadLine() = "y" then exit 0
-        | Idle, ConsoleKey.H ->
-            displayHelp ()
+
+            if Console.ReadLine() = "y" then
+                exit 0
+        | Idle, ConsoleKey.H -> displayHelp ()
 
         // ---------- Work State ----------
         | Work, ConsoleKey.P ->
             // Pause the Work session.
             pausedPrevState <- Work
             currentState <- Pause
-            pauseSessionSeconds <- 0  // reset pause timer
+            pauseSessionSeconds <- 0 // reset pause timer
         | Work, ConsoleKey.Escape ->
             Console.Write("Cancel current Work session? (y/n): ")
+
             if Console.ReadLine() = "y" then
                 currentState <- Idle
                 idleSessionSeconds <- 0
                 remainingTaskSeconds <- taskDuration
-        | Work, ConsoleKey.H ->
-            displayHelp ()
+        | Work, ConsoleKey.H -> displayHelp ()
 
         // ---------- Break State ----------
         | Break, ConsoleKey.P ->
@@ -272,20 +289,19 @@ let rec startLoop () =
             pauseSessionSeconds <- 0
         | Break, ConsoleKey.Escape ->
             Console.Write("Cancel current Break session? (y/n): ")
+
             if Console.ReadLine() = "y" then
                 currentState <- Idle
                 idleSessionSeconds <- 0
                 remainingBreakSeconds <- breakDuration
-        | Break, ConsoleKey.H ->
-            displayHelp ()
+        | Break, ConsoleKey.H -> displayHelp ()
 
         // ---------- Pause State ----------
         | Pause, ConsoleKey.R ->
             // Resume the paused session.
             currentState <- pausedPrevState
             pauseSessionSeconds <- 0
-        | Pause, ConsoleKey.H ->
-            displayHelp ()
+        | Pause, ConsoleKey.H -> displayHelp ()
         | _ -> ()
 
     Thread.Sleep(1000)
@@ -297,27 +313,31 @@ let rec startLoop () =
 ///   --break-length-min [number]
 let parseArgs (args: string[]) =
     let rec aux i =
-         if i >= args.Length then ()
-         else
-              match args.[i] with
-              | "--sound-alert" ->
-                    soundEnabled <- true
-                    aux (i+1)
-              | "--task-length-min" ->
-                    if i+1 < args.Length then
-                        let value = int args.[i+1]
-                        taskLengthMin <- value
-                        taskDuration <- taskLengthMin * 60
-                        aux (i+2)
-                    else aux (i+1)
-              | "--break-length-min" ->
-                    if i+1 < args.Length then
-                        let value = int args.[i+1]
-                        breakLengthMin <- value
-                        breakDuration <- breakLengthMin * 60
-                        aux (i+2)
-                    else aux (i+1)
-              | _ -> aux (i+1)
+        if i >= args.Length then
+            ()
+        else
+            match args.[i] with
+            | "--sound-alert" ->
+                soundEnabled <- true
+                aux (i + 1)
+            | "--task-length-min" ->
+                if i + 1 < args.Length then
+                    let value = int args.[i + 1]
+                    taskLengthMin <- value
+                    taskDuration <- taskLengthMin * 60
+                    aux (i + 2)
+                else
+                    aux (i + 1)
+            | "--break-length-min" ->
+                if i + 1 < args.Length then
+                    let value = int args.[i + 1]
+                    breakLengthMin <- value
+                    breakDuration <- breakLengthMin * 60
+                    aux (i + 2)
+                else
+                    aux (i + 1)
+            | _ -> aux (i + 1)
+
     aux 0
 
 [<EntryPoint>]

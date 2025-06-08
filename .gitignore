@@ -1,29 +1,36 @@
 # Runtime data (you can remove this if you prefer to track it)
+#
 pomodoro-tracker.json
 
 # Build results
+#
 target/
 .fake
 
 
 # Visual Studio temporary files, build results, and user-specific files
-script--vscode--update-local-extensions
-script--vscode--open-editor-with-local-extensions
+#
+script-update-local-vscode-extensions
+script-open-vscode-editor-with-local-extensions-only
 .vscode-extensions/
 .vs/
 *.user
 *.suo
 
 # NuGet Packages
+#
 *.nupkg
 packages/
 
 # OS generated files (macOS, Windows)
+#
 .DS_Store
 Thumbs.db
 
 # Log files
+#
 *.log
 
 # Backup files (not needed in version control)
+#
 *.bak
