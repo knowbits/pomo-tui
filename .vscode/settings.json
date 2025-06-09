@@ -206,6 +206,8 @@
   "window.zoomLevel": 1, // 1 : Increase with 20% (default is 0)
 
   // --- Font & Display ---
+  // Make sure to install the "Cascadia Code NF" font on your platform from:
+  //   https://github.com/microsoft/cascadia-code
   "editor.fontFamily": "'Cascadia Code NF', Consolas, 'Courier New', monospace",
   "editor.fontSize": 14,
   "editor.fontLigatures": true,

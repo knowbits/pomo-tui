@@ -121,7 +121,7 @@ main() {
   declare -A top_level_extensions # Associative array for top-level extensions from the file.
   while IFS= read -r line; do
     # Skip comments and empty lines.
-    line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    line=$(echo "$line" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     [[ -z "$line" || "$line" == "//"* ]] && continue
 
     # Parse ID and pre-release flag.
@@ -131,7 +131,7 @@ main() {
     if [[ "$flag" == " USE-PRE-RELEASE" ]]; then
       use_prerelease="--pre-release"
     fi
-    top_level_extensions["$ext_id"]="$use_prerelease"
+    top_level_extensions["$(normalize_id "$ext_id")"]="$use_prerelease"
   done <"$EXT_FILE"
 
   [[ ${#top_level_extensions[@]} -gt 0 ]] || die "No valid extensions found in '$EXT_FILE'."
@@ -312,7 +312,7 @@ main() {
 
     local type=""
     local parent_info=""
-    if [[ -n "${top_level_extensions[$ext_id]:-}" ]]; then
+    if [[ -v "top_level_extensions[$id_lower]" ]]; then
       type="TOP-LEVEL"
     elif [[ -n "${pack_parents[$id_lower]:-}" ]]; then
       type="IN-PACK"
@@ -330,9 +330,6 @@ main() {
       printf "%-50s %-10s %-15s %-12s\n" "$parent_info" "" "" ""
     fi
   done
-
-  # --- ADDED FOR DEBUGGING ---
-  declare -p deleted_extensions >&2
 
   # Print deleted extensions
   if [[ ${#deleted_extensions[@]} -gt 0 ]]; then

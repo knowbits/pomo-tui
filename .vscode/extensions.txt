@@ -42,7 +42,7 @@ TobiasHochguertel.just-formatter
 esbenp.prettier-vscode
 
 // Enhanced Markdown editing and formatting
-yzhang.markdown-all-in-one
+// yzhang.markdown-all-in-one
 
 // TODO Tree
 gruntfuggly.todo-tree
