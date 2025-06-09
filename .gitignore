@@ -1,36 +1,43 @@
-# Runtime data (you can remove this if you prefer to track it)
-#
+# Runtime data
 pomodoro-tracker.json
 
-# Build results
-#
+# F# build results
 target/
 .fake
 
-
-# Visual Studio temporary files, build results, and user-specific files
-#
-script-update-local-vscode-extensions
-script-open-vscode-editor-with-local-extensions-only
-.vscode-extensions/
-.vs/
-*.user
-*.suo
-
-# NuGet Packages
-#
+# NuGet Packages (.NET SDK)
 *.nupkg
 packages/
 
+# Visual Studio Code: "User Data Dir" (the "--user-data-dir .vscode-data-dir/" option)
+# Ignore everything inside .vscode-data-dir at the top level
+.vscode-data-dir/*
+# IMPORTANT: First, un-ignore the 'User' directory so we can look inside it.
+# The trailing slash is crucial.
+!/.vscode-data-dir/User/
+# Now that we can see inside 'User', ignore everything in it.
+.vscode-data-dir/User/*
+# Finally, un-ignore the specific files you want to keep.
+!/.vscode-data-dir/User/settings.json
+!/.vscode-data-dir/User/Readme.md
+
+# Visual Studio Code related: Misc. files
+.vscode/extensions/
+script-update-local-vscode-extensions
+script-open-vscode-editor-with-local-extensions-only
+
+# Git temporary files
+.gitcommit.txt
+
 # OS generated files (macOS, Windows)
-#
 .DS_Store
 Thumbs.db
 
 # Log files
-#
 *.log
 
 # Backup files (not needed in version control)
-#
 *.bak
+
+# "aider" files - a CLI tool for LLM coding assistance
+.aider*

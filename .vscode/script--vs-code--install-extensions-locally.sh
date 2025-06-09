@@ -1,629 +1,361 @@
 #!/bin/bash
 # install-extensions.sh
 #
-# This script force‐installs every VS Code extension listed in
-# .vscode/mandatory-extensions.txt into a local folder (.vscode-extensions).
+# This script force‐installs VS Code extensions listed in extensions.txt
+# into a local ./extensions folder. It intelligently manages dependencies
+# and extension packs, and uninstalls any extensions that are no longer required.
 #
-# Each non‑comment, non‑empty line in .vscode/mandatory-extensions.txt should be in one of:
+# All installation and uninstallation is handled by the VS Code CLI to ensure
+# consistency and proper dependency management.
 #
-#    ExtensionID
-# or:
-#    ExtensionID, USE-PRE-RELEASE
-#
-# For lines ending with ", USE-PRE-RELEASE", the script passes --pre-release
-# to the VS Code CLI so that the pre‑release version is installed.
-#
-# The script comprehensively tracks extension relationships:
-# - TOP-LEVEL: Extensions explicitly listed in the .txt file
-# - IN-PACK: Extensions that are part of extension packs
-# - IS-DEP: Extensions that other extensions depend on (recursively)
-#
-# Any extension not in these categories will be removed.
-# Only the latest version of each extension is kept.
+# Usage:
+#   1. List top-level extension IDs in 'extensions.txt'.
+#   2. To install a pre-release version, add ', USE-PRE-RELEASE' after the ID.
+#   3. Run the script: ./install-extensions.sh
 #
 set -euo pipefail
 
-# Enhanced error handling
+# --- Configuration ---
+
+readonly SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+# Directory where extensions will be installed.
+readonly EXT_DIR="${SCRIPT_DIR}/extensions"
+readonly EXT_FILE="${SCRIPT_DIR}/extensions.txt"
+readonly USER_DATA_DIR="${SCRIPT_DIR}/../.vscode-data-dir"
+
+# Use 'code' for stable or 'code-insiders' for insiders.
+readonly VSCODE=code-insiders
+
+# NOTE: Need to use an array so that the "launch options" will be expanded correctly
+VSCODE_OPTIONS=()
+# Disable sandboxing for CLI: A common workaround for running Electron applications on Linux.
+VSCODE_OPTIONS+=("--no-sandbox")
+# Disable GPU acceleration: This can help avoid issues with some graphics drivers.
+VSCODE_OPTIONS+=("--disable-gpu")
+# Use local extensions directory: This allows us to install extensions locally.
+VSCODE_OPTIONS+=("--extensions-dir" "$EXT_DIR")
+# Use a local "user data directory":
+# Prevents VS Code from loading any of the User / Global settings or extensions
+VSCODE_OPTIONS+=("--user-data-dir" "$USER_DATA_DIR")
+
+# --- ANSI Color Definitions ---
+readonly RED="\033[0;31m"
+readonly GREEN="\033[0;32m"
+readonly YELLOW="\033[0;33m"
+readonly BLUE="\033[0;34m"
+readonly MAGENTA="\033[0;35m"
+readonly CYAN="\033[0;36m"
+readonly NC="\033[0m" # No Color
+
+# --- Error Handling ---
+# Redirect stderr to logger and console for comprehensive logging.
 exec 2> >(tee -a >(logger -t "$(basename "$0")") >&2)
 
-# Error trap: print detailed error information and abort
 handle_error() {
-    local exit_code=$?
-    local line_no=$1
-    echo "ERROR: Script failed at line $line_no with exit code $exit_code" >&2
-    echo "Command: ${BASH_COMMAND}" >&2
-    echo "Function stack: ${FUNCNAME[*]}" >&2
-    exit $exit_code
+  local exit_code=$?
+  local line_no=$1
+  echo -e "${RED}ERROR: Script failed on line ${line_no} with exit code ${exit_code}.${NC}" >&2
+  echo -e "${RED}Command: ${BASH_COMMAND}${NC}" >&2
+  exit "$exit_code"
 }
 trap 'handle_error $LINENO' ERR
 
-# ANSI color definitions.
-RED="\033[0;31m"
-GREEN="\033[0;32m"
-YELLOW="\033[0;33m"
-BLUE="\033[0;34m"
-MAGENTA="\033[0;35m"
-CYAN="\033[0;36m"
-NC="\033[0m"  # No Color
+# --- Helper Functions ---
 
-# Extension categorization
-declare -A mandatory_extensions=()      # Extensions explicitly listed in .txt file
-declare -A pack_member_extensions=()    # Extensions that are part of packs
-declare -A dependency_extensions=()     # Extensions that other extensions depend on
-declare -A all_needed_extensions=()     # Union of all above categories
-
-# Relationship tracking
-declare -A extension_packs=()           # parent -> pack members
-declare -A extension_dependencies=()    # parent -> dependencies
-declare -A dependency_parents=()        # dependency -> parents that need it
-declare -A pack_parents=()             # pack member -> parent pack
-
-# Installation tracking
-declare -a installation_results=()
-declare -a deleted_extensions=()
-
-# Use VS Code Insiders CLI (change to "code" if needed)
-VSCODE=code-insiders
-
-# Get the full path of this script's folder
-SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-
-# Set the local extensions directory (absolute path)
-EXT_DIR="${SCRIPT_DIR}/../.vscode-extensions"
-
-# Set the path to the mandatory extensions file
-EXT_FILE="${SCRIPT_DIR}/mandatory-extensions.txt"
-
-# Function to trim whitespace from a string.
-trim() {
-    local input="$1"
-    echo "$input" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+# Prints a message and exits with an error code.
+die() {
+  echo -e "${RED}ERROR: $1${NC}" >&2
+  exit 1
 }
 
-# Function to normalize extension ID to lowercase
+# Normalizes an extension ID to lowercase for consistent matching.
 normalize_id() {
-    local id="$1"
-    echo "$id" | tr '[:upper:]' '[:lower:]'
+  echo "$1" | tr '[:upper:]' '[:lower:]'
 }
 
-# Function to get extension info from package.json
-get_extension_info() {
-    local package_json="$1"
-    local info_type="$2"  # "pack", "dependencies", or "id"
-
-    if [[ ! -f "$package_json" ]]; then
-        return 1
-    fi
-
-    case "$info_type" in
-        "pack")
-            jq -r '.extensionPack // [] | .[]' "$package_json" 2>/dev/null || true
-            ;;
-        "dependencies")
-            jq -r '.extensionDependencies // [] | .[]' "$package_json" 2>/dev/null || true
-            ;;
-        "id")
-            jq -r '.publisher + "." + .name' "$package_json" 2>/dev/null || echo ""
-            ;;
-        *)
-            echo "ERROR: Unknown info_type: $info_type" >&2
-            return 1
-            ;;
-    esac
+# Retrieves metadata (id, pack, dependencies) from a package.json file.
+get_ext_info() {
+  local package_json="$1"
+  local query="$2"
+  # Exit successfully if jq fails, returning an empty string.
+  jq -r "$query // [] | .[]" "$package_json" 2>/dev/null || true
 }
 
-# Function to find extension folder by ID
+# Finds the full path to an extension's folder by its ID.
+# Uses a cache (__ext_folder_map) to avoid repeated slow lookups.
+declare -A __ext_folder_map
 find_extension_folder() {
-    local ext_id="$1"
-    local ext_id_lower
-    ext_id_lower=$(normalize_id "$ext_id")
+  local ext_id_lower
+  ext_id_lower=$(normalize_id "$1")
 
+  if [[ -z "${__ext_folder_map[*]}" ]]; then
     for folder in "$EXT_DIR"/*; do
-        if [[ -d "$folder" && -f "$folder/package.json" ]]; then
-            local manifest_id
-            manifest_id=$(normalize_id "$(get_extension_info "$folder/package.json" "id")")
-            if [[ "$manifest_id" == "$ext_id_lower" ]]; then
-                echo "$folder"
-                return 0
-            fi
+      if [[ -d "$folder" && -f "$folder/package.json" ]]; then
+        # Extract publisher and name, then construct the ID.
+        local manifest_id
+        manifest_id=$(jq -r '.publisher + "." + .name' "$folder/package.json" 2>/dev/null || echo "")
+        if [[ -n "$manifest_id" ]]; then
+          __ext_folder_map["$(normalize_id "$manifest_id")"]="$folder"
         fi
+      fi
     done
-    return 1
+  fi
+  echo "${__ext_folder_map[$ext_id_lower]:-}"
 }
 
-# Function to get all versions of an extension and return the latest
-get_latest_extension_version() {
-    local ext_id="$1"
-    local ext_id_lower
-    ext_id_lower=$(normalize_id "$ext_id")
+# --- Main Logic ---
+main() {
+  echo -e "${BLUE}=== VS Code Extensions Installer ===${NC}\n"
 
-    local latest_version=""
-    local latest_folder=""
+  declare -a deleted_extensions
+  # --- 1. Setup and Validation ---
+  command -v "$VSCODE" "${VSCODE_OPTIONS[@]}" >/dev/null || die "'$VSCODE' CLI not found. Please ensure it's in your PATH."
+  command -v jq >/dev/null || die "'jq' is not installed. Please install it to parse extension data."
+  [[ -f "$EXT_FILE" ]] || die "'$EXT_FILE' not found. Please create it."
 
-    for folder in "$EXT_DIR"/*; do
-        if [[ -d "$folder" ]]; then
-            local folder_name
-            folder_name=$(basename "$folder")
-            # Extract extension ID from folder name (format: publisher.name-version)
-            if [[ "$folder_name" =~ ^(.+)-([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
-                local folder_ext_id
-                folder_ext_id=$(normalize_id "${BASH_REMATCH[1]}")
-                local version="${BASH_REMATCH[2]}"
-                if [[ "$folder_ext_id" == "$ext_id_lower" ]]; then
-                    if [[ -z "$latest_version" ]] || [[ "$version" > "$latest_version" ]]; then
-                        latest_version="$version"
-                        latest_folder="$folder"
-                    fi
-                fi
-            fi
-        fi
-    done
+  mkdir -p "$EXT_DIR"
+  echo -e "${BLUE}Using local extensions directory: ${EXT_DIR}${NC}"
 
-    if [[ -n "$latest_version" ]]; then
-        echo "$latest_folder|$latest_version"
+  # --- 2. Parse Input File ---
+  declare -A top_level_extensions # Associative array for top-level extensions from the file.
+  while IFS= read -r line; do
+    # Skip comments and empty lines.
+    line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    [[ -z "$line" || "$line" == "//"* ]] && continue
+
+    # Parse ID and pre-release flag.
+    local ext_id="${line%%,*}"
+    local flag="${line#*,}"
+    local use_prerelease=""
+    if [[ "$flag" == " USE-PRE-RELEASE" ]]; then
+      use_prerelease="--pre-release"
     fi
-}
+    top_level_extensions["$ext_id"]="$use_prerelease"
+  done <"$EXT_FILE"
 
-# Function to remove all versions of an extension except the latest
-cleanup_old_versions() {
-    local ext_id="$1"
-    local ext_id_lower
-    ext_id_lower=$(normalize_id "$ext_id")
+  [[ ${#top_level_extensions[@]} -gt 0 ]] || die "No valid extensions found in '$EXT_FILE'."
 
-    # Get the latest version info
-    local latest_info
-    latest_info=$(get_latest_extension_version "$ext_id")
-    if [[ -z "$latest_info" ]]; then
-        return 0
-    fi
+  # --- 3. Pre-Install Snapshot ---
+  echo -e "${BLUE}Getting list of currently installed extensions...${NC}"
+  declare -A versions_before # Store versions before installing to track changes.
+  while IFS='@' read -r id version; do
+    versions_before["$(normalize_id "$id")"]="$version"
+  done < <("$VSCODE" "${VSCODE_OPTIONS[@]}" --list-extensions --show-versions)
 
-    IFS='|' read -r latest_folder latest_version <<< "$latest_info"
+  # --- 4. Install Top-Level Extensions ---
+  # This single loop installs or updates all explicitly requested extensions.
+  # VS Code automatically handles fetching their dependencies.
+  echo -e "${BLUE}Installing mandatory extensions from ${EXT_FILE}...${NC}"
+  declare -a installation_results
+  for ext_id in "${!top_level_extensions[@]}"; do
+    local flag=${top_level_extensions[$ext_id]}
+    local log_msg="Installing ${ext_id}..."
+    [[ -n "$flag" ]] && log_msg="Installing ${ext_id} with pre-release..."
+    echo -e "${BLUE}${log_msg}${NC}"
 
-    # Remove all other versions
-    for folder in "$EXT_DIR"/*; do
-        if [[ -d "$folder" ]]; then
-            local folder_name
-            folder_name=$(basename "$folder")
-            # Extract extension ID from folder name (format: publisher.name-version)
-            if [[ "$folder_name" =~ ^(.+)-([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
-                local folder_ext_id
-                folder_ext_id=$(normalize_id "${BASH_REMATCH[1]}")
-                local version="${BASH_REMATCH[2]}"
-                if [[ "$folder_ext_id" == "$ext_id_lower" && "$folder" != "$latest_folder" ]]; then
-                    echo -e "${YELLOW}  Removing old version: $(basename "$folder") (v$version)${NC}"
-                    if ! rm -rf "$folder"; then
-                        echo -e "${RED}ERROR: Failed to remove old version: $folder${NC}" >&2
-                        return 1
-                    fi
-                fi
-            fi
-        fi
-    done
-}
-
-# Function to install extension
-install_extension() {
-    local ext_id="$1"
-    local extra_flag="$2"
-
-    # Get version before installation (if extension exists)
-    local previous_version
-    previous_version=$("$VSCODE" --list-extensions --show-versions --extensions-dir "$EXT_DIR" \
-        | grep -i "^$(normalize_id "$ext_id")@" | cut -d'@' -f2 || echo "")
-
-    if [[ -n "$extra_flag" ]]; then
-        echo -e "${BLUE}Installing ${ext_id} with pre-release...${NC}"
-    else
-        echo -e "${BLUE}Installing ${ext_id}...${NC}"
-    fi
-
-    # Capture all output from the installation command.
+    # Capture output and status code.
     local output
     local rc
-    set +e  # Temporarily disable exit on error to capture the return code
-    output=$("$VSCODE" --extensions-dir "$EXT_DIR" --install-extension "$ext_id" --force $extra_flag 2>&1)
+    set +e # Disable exit on error to capture status
+    output=$("$VSCODE" "${VSCODE_OPTIONS[@]}" --install-extension "$ext_id" --force $flag 2>&1)
     rc=$?
-    set -e  # Re-enable exit on error
+    set -e # Re-enable exit on error
 
     if [[ $rc -ne 0 ]]; then
-        echo -e "${RED}ERROR: Failed to install ${ext_id} (exit code: $rc)${NC}" >&2
-        echo "Installation output:" >&2
-        echo "$output" >&2
-        if echo "$output" | grep -q "v8::ToLocalChecked Empty MaybeLocal"; then
-            echo -e "${RED}HINT: VS Code encountered a V8 error while processing $ext_id. This may indicate a bug in the extension or in VS Code. Try updating VS Code or check for known issues for this extension.${NC}" >&2
-        fi
-        return 1
+      echo -e "${RED}ERROR: Failed to install ${ext_id} (exit code: $rc)${NC}" >&2
+      echo "Installation output:" >&2
+      echo "$output" >&2
     else
-        echo "$output"
+      echo "$output"
+      installation_results+=("$ext_id")
+    fi
+  done
+
+  # --- 5. Discover All Required Extensions (Recursive) ---
+  echo -e "\n${BLUE}Building complete set of needed extensions...${NC}"
+  declare -A all_required_ids                      # The complete set of extensions that should be kept.
+  declare -a queue=("${!top_level_extensions[@]}") # Start discovery with top-level extensions.
+  declare -A processed_ids                         # Track processed IDs to avoid redundant work.
+
+  while [[ ${#queue[@]} -gt 0 ]]; do
+    local current_id="${queue[0]}"
+    queue=("${queue[@]:1}") # Dequeue
+    local current_id_lower
+    current_id_lower=$(normalize_id "$current_id")
+
+    [[ -n "${processed_ids[$current_id_lower]:-}" ]] && continue
+    processed_ids["$current_id_lower"]=1
+    all_required_ids["$current_id_lower"]=1
+
+    local ext_folder
+    ext_folder=$(find_extension_folder "$current_id")
+    if [[ -z "$ext_folder" || ! -f "$ext_folder/package.json" ]]; then
+      continue # Not installed or invalid, can't discover children.
     fi
 
-    # Retrieve the installed version.
-    local installed_version
-    installed_version=$("$VSCODE" --list-extensions --show-versions --extensions-dir "$EXT_DIR" \
-        | grep -i "^$(normalize_id "$ext_id")@" | cut -d'@' -f2 || echo "unknown")
+    # Discover and enqueue pack members and dependencies.
+    while IFS= read -r child_id; do [[ -n "$child_id" ]] && queue+=("$child_id"); done < <(get_ext_info "$ext_folder/package.json" '.extensionPack')
+    while IFS= read -r child_id; do [[ -n "$child_id" ]] && queue+=("$child_id"); done < <(get_ext_info "$ext_folder/package.json" '.extensionDependencies')
+  done
 
-    # Determine status
-    local status
-    if [[ -z "$previous_version" ]]; then
-        status="NEW"
-    elif [[ "$previous_version" != "$installed_version" ]]; then
-        status="UPDATED"
+  # --- 6. Reconcile and Uninstall Orphans ---
+  echo -e "\n${BLUE}Analyzing installed extensions for removal...${NC}"
+  declare -a to_uninstall
+  while IFS= read -r installed_id; do
+    if [[ -z "${all_required_ids[$(normalize_id "$installed_id")]:-}" ]]; then
+      to_uninstall+=("$installed_id")
+    fi
+  done < <("$VSCODE" "${VSCODE_OPTIONS[@]}" --list-extensions)
+
+  for ext_id in "${to_uninstall[@]}"; do
+    echo -e "${YELLOW}Uninstalling unneeded extension: $ext_id${NC}"
+    # Use the VS Code CLI to uninstall correctly. This is the fix.
+    if "$VSCODE" "${VSCODE_OPTIONS[@]}" --uninstall-extension "$ext_id" >/dev/null 2>&1; then
+      deleted_extensions+=("$ext_id")
     else
-        status="-"
+      echo -e "${YELLOW}WARNING: Failed to uninstall $ext_id. It may be a dependency of another unmanaged extension.${NC}" >&2
+    fi
+  done
+
+  # --- 7. Generate and Print Reports ---
+  # Gather data from the final state of the extensions directory for accurate reporting.
+  declare -A report_data        # id -> "version|status|type|parents"
+  declare -A extension_packs    # pack_id -> members
+  declare -A dependency_map     # parent_id -> dependencies
+  declare -A pack_parents       # child_id -> pack_id
+  declare -A dependency_parents # child_id -> parent_ids
+
+  # Get final list of installed extensions and versions.
+  declare -A versions_after
+  while IFS='@' read -r id version; do
+    versions_after["$(normalize_id "$id")"]="$version"
+  done < <("$VSCODE" "${VSCODE_OPTIONS[@]}" --list-extensions --show-versions)
+
+  # Build relationship maps (packs, dependencies) for reporting.
+  for id_lower in "${!versions_after[@]}"; do
+    local ext_folder
+    ext_folder=$(find_extension_folder "$id_lower")
+    [[ -z "$ext_folder" ]] && continue
+
+    local pkg_json="$ext_folder/package.json"
+    # This requires the original-cased ID, which we find from the list-extensions output.
+    local original_id
+    original_id=$("$VSCODE" "${VSCODE_OPTIONS[@]}" --list-extensions | grep -i "^${id_lower}$")
+
+    # Map extension packs
+    local members
+    members=$(get_ext_info "$pkg_json" '.extensionPack')
+    if [[ -n "$members" ]]; then
+      extension_packs["$original_id"]="$members"
+      while IFS= read -r member; do pack_parents["$(normalize_id "$member")"]="$original_id"; done <<<"$members"
     fi
 
-    installation_results+=("$ext_id|$status|$installed_version")
-
-    # Clean up old versions after installation
-    cleanup_old_versions "$ext_id"
-}
-
-# Function to analyze all installed extensions to build complete relationship map
-analyze_all_installed_extensions() {
-    echo -e "${BLUE}Analyzing all installed extensions for relationships...${NC}"
-
-    # Clear previous relationship data
-    extension_packs=()
-    extension_dependencies=()
-    dependency_parents=()
-    pack_parents=()
-
-    # Get all installed extensions
-    local -a all_installed=()
-    while IFS= read -r ext_id; do
-        all_installed+=("$ext_id")
-    done < <("$VSCODE" --list-extensions --extensions-dir "$EXT_DIR")
-
-    echo -e "${BLUE}Found ${#all_installed[@]} installed extensions${NC}"
-
-    # Process each installed extension
-    for ext_id in "${all_installed[@]}"; do
-        local ext_folder
-        if ext_folder=$(find_extension_folder "$ext_id"); then
-            local package_json="$ext_folder/package.json"
-
-            if [[ -f "$package_json" ]]; then
-                # Check for extension packs
-                local pack_members=()
-                while IFS= read -r member; do
-                    if [[ -n "$member" ]]; then
-                        pack_members+=("$member")
-                    fi
-                done < <(get_extension_info "$package_json" "pack")
-
-                if [[ ${#pack_members[@]} -gt 0 ]]; then
-                    extension_packs["$ext_id"]=$(printf "%s\n" "${pack_members[@]}")
-                    echo -e "${CYAN}Found extension pack: $ext_id with ${#pack_members[@]} members${NC}"
-
-                    for member in "${pack_members[@]}"; do
-                        local member_normalized
-                        member_normalized=$(normalize_id "$member")
-                        pack_member_extensions["$member_normalized"]=1
-                        all_needed_extensions["$member_normalized"]=1
-                        pack_parents["$member_normalized"]="$ext_id"
-                    done
-                fi
-
-                # Check for dependencies
-                local deps=()
-                while IFS= read -r dep; do
-                    if [[ -n "$dep" ]]; then
-                        deps+=("$dep")
-                    fi
-                done < <(get_extension_info "$package_json" "dependencies")
-
-                if [[ ${#deps[@]} -gt 0 ]]; then
-                    extension_dependencies["$ext_id"]=$(printf "%s\n" "${deps[@]}")
-                    echo -e "${MAGENTA}Found dependencies for $ext_id: ${#deps[@]} dependencies${NC}"
-
-                    for dep in "${deps[@]}"; do
-                        local dep_normalized
-                        dep_normalized=$(normalize_id "$dep")
-                        dependency_extensions["$dep_normalized"]=1
-                        all_needed_extensions["$dep_normalized"]=1
-
-                        # Track parent relationship
-                        if [[ -n "${dependency_parents[$dep_normalized]:-}" ]]; then
-                            dependency_parents["$dep_normalized"]+=", $ext_id"
-                        else
-                            dependency_parents["$dep_normalized"]="$ext_id"
-                        fi
-                    done
-                fi
-            else
-                echo -e "${YELLOW}WARNING: No package.json found for $ext_id in $ext_folder${NC}"
-            fi
-        else
-            echo -e "${YELLOW}WARNING: Could not find folder for installed extension: $ext_id${NC}"
+    # Map dependencies
+    local deps
+    deps=$(get_ext_info "$pkg_json" '.extensionDependencies')
+    if [[ -n "$deps" ]]; then
+      dependency_map["$original_id"]="$deps"
+      while IFS= read -r dep; do
+        local dep_lower=$(normalize_id "$dep")
+        local parents="${dependency_parents[$dep_lower]:-}"
+        # Append parent, avoiding duplicates.
+        if [[ ! "$parents" =~ (^|, )$original_id(,|$) ]]; then
+          dependency_parents["$dep_lower"]="${parents:+$parents, }$original_id"
         fi
-    done
-}
-
-# Function to print extension pack hierarchy
-print_extension_packs() {
-    echo -e "\n${CYAN}=== EXTENSION PACKS HIERARCHY ===${NC}"
-
-    local found_packs=false
-    for parent in "${!extension_packs[@]}"; do
-        found_packs=true
-        echo -e "\n${CYAN}📦 Extension Pack: $parent${NC}"
-        while IFS= read -r member; do
-            if [[ -n "$member" ]]; then
-                local member_status=""
-                local member_normalized
-                member_normalized=$(normalize_id "$member")
-
-                # Check if this member is actually installed
-                local is_installed
-                is_installed=$("$VSCODE" --list-extensions --extensions-dir "$EXT_DIR" | grep -i "^$member_normalized$" || echo "")
-
-                if [[ -n "$is_installed" ]]; then
-                    member_status="[INSTALLED]"
-                else
-                    member_status="[NOT INSTALLED]"
-                fi
-
-                echo -e "  ├─ $member ${GREEN}$member_status${NC}"
-            fi
-        done <<< "${extension_packs[$parent]}"
-    done
-
-    if [[ "$found_packs" == false ]]; then
-        echo -e "  ${YELLOW}No extension packs found${NC}"
+      done <<<"$deps"
     fi
-}
+  done
 
-# Function to print dependency hierarchy
-print_dependency_hierarchy() {
-    echo -e "\n${MAGENTA}=== DEPENDENCY HIERARCHY ===${NC}"
-
-    local found_deps=false
-    for parent in "${!extension_dependencies[@]}"; do
-        found_deps=true
-        echo -e "\n${MAGENTA}🔗 $parent depends on:${NC}"
-        while IFS= read -r dep; do
-            if [[ -n "$dep" ]]; then
-                local dep_status=""
-                local dep_normalized
-                dep_normalized=$(normalize_id "$dep")
-
-                # Check if this dependency is actually installed
-                local is_installed
-                is_installed=$("$VSCODE" --list-extensions --extensions-dir "$EXT_DIR" | grep -i "^$dep_normalized$" || echo "")
-
-                if [[ -n "$is_installed" ]]; then
-                    dep_status="[INSTALLED]"
-                else
-                    dep_status="[NOT INSTALLED]"
-                fi
-
-                echo -e "  ├─ $dep ${GREEN}$dep_status${NC}"
-            fi
-        done <<< "${extension_dependencies[$parent]}"
+  # Print Hierarchies (matches original output)
+  echo -e "\n${CYAN}=== EXTENSION PACKS HIERARCHY ===${NC}"
+  if [[ ${#extension_packs[@]} -gt 0 ]]; then
+    for parent in $(printf '%s\n' "${!extension_packs[@]}" | sort); do
+      echo -e "\n${CYAN}📦 Extension Pack: $parent${NC}"
+      while IFS= read -r member; do echo -e "  ├─ $member ${GREEN}[INSTALLED]${NC}"; done <<<"${extension_packs[$parent]}"
     done
+  else
+    echo -e "  ${YELLOW}No extension packs found${NC}"
+  fi
 
-    if [[ "$found_deps" == false ]]; then
-        echo -e "  ${YELLOW}No dependencies found${NC}"
+  echo -e "\n${MAGENTA}=== DEPENDENCY HIERARCHY ===${NC}"
+  if [[ ${#dependency_map[@]} -gt 0 ]]; then
+    for parent in $(printf '%s\n' "${!dependency_map[@]}" | sort); do
+      echo -e "\n${MAGENTA}🔗 $parent depends on:${NC}"
+      while IFS= read -r dep; do echo -e "  ├─ $dep ${GREEN}[INSTALLED]${NC}"; done <<<"${dependency_map[$parent]}"
+    done
+  else
+    echo -e "  ${YELLOW}No dependencies found${NC}"
+  fi
+
+  # Print Final Installation Summary Table
+  echo -e "\n${GREEN}=== INSTALLATION RESULTS ===${NC}"
+  printf "%-50s %-10s %-15s %-12s\n" "Extension ID" "Status" "Version" "Type"
+  printf '%.0s=' {1..87}
+  echo ""
+
+  # Get sorted list of all final extensions
+  mapfile -t sorted_ext_ids < <("$VSCODE" "${VSCODE_OPTIONS[@]}" --list-extensions | sort -f)
+
+  for ext_id in "${sorted_ext_ids[@]}"; do
+    local id_lower
+    id_lower=$(normalize_id "$ext_id")
+    local version="${versions_after[$id_lower]:-unknown}"
+    local prev_version="${versions_before[$id_lower]:-}"
+
+    local status="-"
+    if [[ -z "$prev_version" ]]; then
+      status="NEW"
+    elif [[ "$version" != "$prev_version" ]]; then
+      status="UPDATED"
     fi
-}
 
-# Function to print simplified installation results
-print_simplified_installation_results() {
-    echo -e "\n${GREEN}=== INSTALLATION RESULTS ===${NC}"
-
-    # Create a combined array with all extensions and their info
-    declare -A all_extensions=()
-    declare -A ext_status=()
-    declare -A ext_version=()
-    declare -A ext_type=()
-    declare -A ext_parent=()
-
-    # Process installation results
-    for result in "${installation_results[@]}"; do
-        IFS='|' read -r id status version <<< "$result"
-        local id_normalized
-        id_normalized=$(normalize_id "$id")
-        all_extensions["$id_normalized"]="$id"
-        ext_status["$id_normalized"]="$status"
-        ext_version["$id_normalized"]="$version"
-    done
-
-    # Also include any other installed extensions that weren't in installation_results
-    while IFS= read -r ext_id; do
-        local ext_id_normalized
-        ext_id_normalized=$(normalize_id "$ext_id")
-        if [[ -z "${all_extensions[$ext_id_normalized]:-}" ]]; then
-            all_extensions["$ext_id_normalized"]="$ext_id"
-            ext_status["$ext_id_normalized"]="-"
-            # Get version
-            local version
-            version=$("$VSCODE" --list-extensions --show-versions --extensions-dir "$EXT_DIR" \
-                | grep -i "^$ext_id_normalized@" | cut -d'@' -f2 || echo "unknown")
-            ext_version["$ext_id_normalized"]="$version"
-        fi
-    done < <("$VSCODE" --list-extensions --extensions-dir "$EXT_DIR")
-
-    # Determine types and parents
-    for ext_id_normalized in "${!all_extensions[@]}"; do
-        if [[ -n "${mandatory_extensions[$ext_id_normalized]:-}" ]]; then
-            ext_type["$ext_id_normalized"]="TOP-LEVEL"
-            ext_parent["$ext_id_normalized"]=""
-        elif [[ -n "${pack_member_extensions[$ext_id_normalized]:-}" ]]; then
-            ext_type["$ext_id_normalized"]="IN-PACK"
-            ext_parent["$ext_id_normalized"]="  └─ from pack: ${pack_parents[$ext_id_normalized]:-unknown}"
-        elif [[ -n "${dependency_extensions[$ext_id_normalized]:-}" ]]; then
-            ext_type["$ext_id_normalized"]="IS-DEP"
-            ext_parent["$ext_id_normalized"]="  └─ needed by: ${dependency_parents[$ext_id_normalized]:-unknown}"
-        else
-            ext_type["$ext_id_normalized"]="UNKNOWN"
-            ext_parent["$ext_id_normalized"]=""
-        fi
-    done
-
-    # Sort extensions alphabetically
-    local -a sorted_extensions=()
-    while IFS= read -r ext_id_normalized; do
-        sorted_extensions+=("$ext_id_normalized")
-    done < <(printf '%s\n' "${!all_extensions[@]}" | sort)
-
-    # Print header
-    printf "%-50s %-10s %-15s %-12s\n" "Extension ID" "Status" "Version" "Type"
-    printf '%.0s=' {1..87}; echo ""
-
-    # Print extensions
-    for ext_id_normalized in "${sorted_extensions[@]}"; do
-        local ext_id="${all_extensions[$ext_id_normalized]}"
-        local status="${ext_status[$ext_id_normalized]}"
-        local version="${ext_version[$ext_id_normalized]}"
-        local type="${ext_type[$ext_id_normalized]}"
-        local parent="${ext_parent[$ext_id_normalized]}"
-
-        # Print plain type (no color)
-        printf "%-50s %-10s %-15s %-12s\n" "$ext_id" "$status" "$version" "$type"
-
-        # Print parent info if available
-        if [[ -n "$parent" ]]; then
-            printf "%-50s %-10s %-15s %-12s\n" "$parent" "" "" ""
-        fi
-    done
-}
-
-# Main execution starts here
-echo -e "${BLUE}=== VS Code Extensions Installer ===${NC}\n"
-
-# Verify that the VS Code CLI exists.
-if ! command -v "$VSCODE" >/dev/null 2>&1; then
-    echo -e "${RED}ERROR: VS Code CLI ('$VSCODE') not found in PATH${NC}" >&2
-    echo "Please ensure VS Code is installed and the CLI is available" >&2
-    exit 1
-fi
-
-# Create the local extensions directory if it doesn't exist.
-if ! mkdir -p "$EXT_DIR"; then
-    echo -e "${RED}ERROR: Could not create directory ${EXT_DIR}${NC}" >&2
-    exit 1
-fi
-echo -e "${BLUE}Using local extensions directory: ${EXT_DIR}${NC}"
-
-# Ensure that the mandatory file exists.
-if [[ ! -f "$EXT_FILE" ]]; then
-    echo -e "${RED}ERROR: ${EXT_FILE} not found! Please create this file with the extension IDs.${NC}" >&2
-    exit 1
-fi
-
-# Read lines from the mandatory extensions file
-declare -a ext_lines=()
-while IFS= read -r line; do
-    trimmed=$(trim "$line")
-    if [[ -z "$trimmed" || "$trimmed" == "//"* ]]; then
-        continue
-    fi
-    ext_lines+=( "$trimmed" )
-done < "$EXT_FILE"
-
-if [[ ${#ext_lines[@]} -eq 0 ]]; then
-    echo -e "${RED}ERROR: No valid extensions found in ${EXT_FILE}${NC}" >&2
-    exit 1
-fi
-
-# Build mandatory extensions set
-for entry in "${ext_lines[@]}"; do
-    ext_id=""
-    if [[ "$entry" == *","* ]]; then
-        IFS=',' read -r raw_ext _ <<< "$entry"
-        ext_id=$(trim "$raw_ext")
+    local type=""
+    local parent_info=""
+    if [[ -n "${top_level_extensions[$ext_id]:-}" ]]; then
+      type="TOP-LEVEL"
+    elif [[ -n "${pack_parents[$id_lower]:-}" ]]; then
+      type="IN-PACK"
+      parent_info="  └─ from pack: ${pack_parents[$id_lower]}"
+    elif [[ -n "${dependency_parents[$id_lower]:-}" ]]; then
+      type="IS-DEP"
+      parent_info="  └─ needed by: ${dependency_parents[$id_lower]}"
     else
-        ext_id=$(trim "$entry")
+      # Should not happen in this logic, but as a fallback.
+      type="UNKNOWN"
     fi
-    key=$(normalize_id "$ext_id")
-    mandatory_extensions["$key"]=1
-    all_needed_extensions["$key"]=1
-done
 
-echo -e "${BLUE}Installing mandatory extensions from ${EXT_FILE}...${NC}"
-
-# Install mandatory extensions
-for entry in "${ext_lines[@]}"; do
-    ext_id=""
-    flag=""
-    if [[ "$entry" == *","* ]]; then
-        IFS=',' read -r raw_ext raw_flag <<< "$entry"
-        ext_id=$(trim "$raw_ext")
-        flag=$(trim "$raw_flag")
-        if [[ "$flag" == "USE-PRE-RELEASE" ]]; then
-            install_extension "$ext_id" "--pre-release"
-        else
-            install_extension "$ext_id" ""
-        fi
-    else
-        ext_id=$(trim "$entry")
-        install_extension "$ext_id" ""
+    printf "%-50s %-10s %-15s %-12s\n" "$ext_id" "$status" "$version" "$type"
+    if [[ -n "$parent_info" ]]; then
+      printf "%-50s %-10s %-15s %-12s\n" "$parent_info" "" "" ""
     fi
-done
+  done
 
-# CRITICAL: Analyze all installed extensions AFTER installation is complete
-analyze_all_installed_extensions
-
-# Get list of all currently installed extensions
-echo -e "\n${BLUE}Analyzing installed extensions...${NC}"
-declare -a all_installed=()
-while IFS= read -r line; do
-    all_installed+=( "$line" )
-done < <("$VSCODE" --list-extensions --extensions-dir "$EXT_DIR")
-
-# Identify extensions to delete (not in any needed category)
-for ext in "${all_installed[@]}"; do
-    ext_normalized=$(normalize_id "$ext")
-    if [[ -z "${all_needed_extensions[$ext_normalized]:-}" ]]; then
-        echo -e "${YELLOW}Marking for deletion: $ext (not needed)${NC}"
-        deleted_extensions+=("$ext")
-        if ! "$VSCODE" --extensions-dir "$EXT_DIR" --uninstall-extension "$ext" 2>/dev/null; then
-            echo -e "${YELLOW}WARNING: Failed to uninstall $ext (may not be critical)${NC}" >&2
-        fi
-    fi
-done
-
-# Clean up old versions for all remaining extensions
-echo -e "\n${BLUE}Cleaning up old versions...${NC}"
-for ext in "${all_installed[@]}"; do
-    ext_normalized=$(normalize_id "$ext")
-    if [[ -n "${all_needed_extensions[$ext_normalized]:-}" ]]; then
-        cleanup_old_versions "$ext"
-    fi
-done
-
-# ---------------------------------------------------------------
-# Print comprehensive summary with relationships
-
-# Print extension packs hierarchy
-print_extension_packs
-
-# Print dependency hierarchy
-print_dependency_hierarchy
-
-# Print simplified installation results
-print_simplified_installation_results
-
-# Print deleted extensions
-if [[ ${#deleted_extensions[@]} -gt 0 ]]; then
+  # Print deleted extensions
+  if [[ ${#deleted_extensions[@]} -gt 0 ]]; then
     echo -e "\n${RED}Deleted Extensions (${#deleted_extensions[@]}):${NC}"
+    printf '%.0s=' {1..87}
+    echo ""
     for ext in "${deleted_extensions[@]}"; do
-        echo "  $ext"
+      printf '  %s\n' "$ext"
     done
-else
+  else
     echo -e "\n${GREEN}No extensions were deleted${NC}"
-fi
+  fi
 
-# Save a pretty-printed copy of extensions.json if it exists
-if [[ -f "$EXT_DIR/extensions.json" ]]; then
+  # Save pretty-printed extensions.json
+  if [[ -f "$EXT_DIR/extensions.json" ]]; then
     echo -e "\n${BLUE}Saving pretty-printed copy of extensions.json...${NC}"
-    if jq '.' "$EXT_DIR/extensions.json" > "$EXT_DIR/extensions-pretty-printed.json"; then
-        echo -e "${GREEN}Successfully saved $EXT_DIR/extensions-pretty-printed.json${NC}"
+    if jq '.' "$EXT_DIR/extensions.json" >"$EXT_DIR/extensions-pretty-printed.json"; then
+      echo -e "${GREEN}Successfully saved $EXT_DIR/extensions-pretty-printed.json${NC}"
     else
-        echo -e "${RED}ERROR: Failed to create pretty-printed copy of extensions.json${NC}" >&2
+      echo -e "${RED}WARNING: Failed to create pretty-printed copy of extensions.json${NC}" >&2
     fi
-fi
+  fi
 
-echo -e "\n${GREEN}=== INSTALLATION COMPLETE ===${NC}"
-echo -e "${BLUE}Total needed extensions: ${#all_needed_extensions[@]}${NC}"
-echo -e "${BLUE}Extensions deleted: ${#deleted_extensions[@]}${NC}\n"
+  echo -e "\n${GREEN}=== INSTALLATION COMPLETE ===${NC}"
+  echo -e "${BLUE}Total needed extensions: ${#all_required_ids[@]}${NC}"
+  echo -e "${BLUE}Extensions deleted: ${#deleted_extensions[@]}${NC}\n"
+}
+
+# --- Script Entry Point ---
+main "$@"

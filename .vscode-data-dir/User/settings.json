@@ -1,0 +1,33 @@
+{
+
+  // To open "User Settings (JSON)" in VS Code:
+  //    CTRL+SH+P + "Open User Settings (JSON)"
+
+  // These settings are "user level settings" that are not allowed in the "Workspace settings" (.vscode/settings.json)
+
+  "window.restoreWindows": "all",
+  "window.openFilesInNewWindow": "on",
+  "window.autoDetectHighContrast": false,
+  "window.newWindowDimensions": "inherit",
+
+
+  "extensions.autoUpdate": "onlyEnabledExtensions",
+  "extensions.autoCheckUpdates": true,
+
+  "telemetry.telemetryLevel": "off",
+
+
+  "security.workspace.trust.enabled": true,
+  "security.workspace.trust.untrustedFiles": "open",
+  // "security.workspace.trust.emptyWindow": true,
+  "security.workspace.trust.startupPrompt": "always",
+  "roo-cline.allowedCommands": [
+    "npm test",
+    "npm install",
+    "tsc",
+    "git log",
+    "git diff",
+    "git show"
+  ],
+
+}

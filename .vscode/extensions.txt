@@ -22,23 +22,42 @@ Ionide.Ionide-fsharp
 
 // ------------------------------------------
 // AI-powered coding assistance
-github.copilot, USE-PRE-RELEASE
+// github.copilot, USE-PRE-RELEASE
 
 // AI chat features powered by Copilot
-github.copilot-chat, USE-PRE-RELEASE
+// github.copilot-chat, USE-PRE-RELEASE
 
 // RooCode: AI Assistant
-// RooVeterinaryInc.roo-cline
+RooVeterinaryInc.roo-cline
 
 // ------------------------------------------
+
+// VSCode syntax highlighting extension for the just language.
+nefrob.vscode-just-syntax
+
 // Formatting Justfile ("just" make tool)
 TobiasHochguertel.just-formatter
 
 // Prettier: default formatter
-// esbenp.prettier-vscode
+esbenp.prettier-vscode
 
 // Enhanced Markdown editing and formatting
 yzhang.markdown-all-in-one
 
+// TODO Tree
+gruntfuggly.todo-tree
+
+// YAML support
+redhat.vscode-yaml
+
+// Bash shell formatting
+foxundermoon.shell-format
+
 // Shell script linting and static analysis
 // timonwong.shellcheck
+
+// ------------------------------------------
+// Extensions for VS Code editor appearance:
+
+// "VS Code icons" extensions
+vscode-icons-team.vscode-icons
