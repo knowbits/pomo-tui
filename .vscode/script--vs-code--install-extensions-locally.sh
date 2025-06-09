@@ -107,7 +107,8 @@ find_extension_folder() {
 main() {
   echo -e "${BLUE}=== VS Code Extensions Installer ===${NC}\n"
 
-  declare -a deleted_extensions
+  declare -a deleted_extensions=()
+
   # --- 1. Setup and Validation ---
   command -v "$VSCODE" "${VSCODE_OPTIONS[@]}" >/dev/null || die "'$VSCODE' CLI not found. Please ensure it's in your PATH."
   command -v jq >/dev/null || die "'jq' is not installed. Please install it to parse extension data."
@@ -329,6 +330,9 @@ main() {
       printf "%-50s %-10s %-15s %-12s\n" "$parent_info" "" "" ""
     fi
   done
+
+  # --- ADDED FOR DEBUGGING ---
+  declare -p deleted_extensions >&2
 
   # Print deleted extensions
   if [[ ${#deleted_extensions[@]} -gt 0 ]]; then
