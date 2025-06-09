@@ -9,6 +9,15 @@ target/
 *.nupkg
 packages/
 
+# Git temporary files
+.gitcommit.txt
+
+# Visual Studio Code related: Misc. files
+.vscode/extensions/
+open-vscode-with-local-extensions-only
+update-the-local-vscode-extensions
+
+
 # Visual Studio Code: "User Data Dir" (the "--user-data-dir .vscode-data-dir/" option)
 # Ignore everything inside .vscode-data-dir at the top level
 .vscode-data-dir/*
@@ -21,13 +30,6 @@ packages/
 !/.vscode-data-dir/User/settings.json
 !/.vscode-data-dir/User/Readme.md
 
-# Visual Studio Code related: Misc. files
-.vscode/extensions/
-script-update-local-vscode-extensions
-script-open-vscode-editor-with-local-extensions-only
-
-# Git temporary files
-.gitcommit.txt
 
 # OS generated files (macOS, Windows)
 .DS_Store
