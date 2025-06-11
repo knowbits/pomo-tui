@@ -13,23 +13,11 @@ packages/
 .gitcommit.txt
 
 # Visual Studio Code related: Misc. files
-.vscode/extensions/
-open-vscode-with-local-extensions-only
-update-the-local-vscode-extensions
-
-
-# Visual Studio Code: "User Data Dir" (the "--user-data-dir .vscode-data-dir/" option)
-# Ignore everything inside .vscode-data-dir at the top level
-.vscode-data-dir/*
-# IMPORTANT: First, un-ignore the 'User' directory so we can look inside it.
-# The trailing slash is crucial.
-!/.vscode-data-dir/User/
-# Now that we can see inside 'User', ignore everything in it.
-.vscode-data-dir/User/*
-# Finally, un-ignore the specific files you want to keep.
-!/.vscode-data-dir/User/settings.json
-!/.vscode-data-dir/User/Readme.md
-
+.aider*
+.tmp-extensions--dir-cursor
+.tmp-extensions--dir-vscode
+.tmp-user-data-dir-cursor
+.tmp-user-data-dir-vscode
 
 # OS generated files (macOS, Windows)
 .DS_Store

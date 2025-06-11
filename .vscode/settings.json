@@ -63,10 +63,12 @@
 
   // List all files to be excluded from the workspace
   "files.exclude": {
-    "script-update-local-vscode-extensions": true,
-    "script-open-vscode-editor-with-local-extensions-only": true,
-    ".vscode/extensions/": true,
-    ".vscode-data-dir": true,
+    ".aider*": true,
+    ".vscode--User-Settings--TO-BE-COPIED--settings.json": true,
+    ".tmp-extensions--dir-cursor": true,
+    ".tmp-extensions--dir-vscode": true,
+    ".tmp-user-data-dir-cursor": true,
+    ".tmp-user-data-dir-vscode": true,
     "target/": true,
     // git exclusions
     ".git": true,
@@ -86,10 +88,16 @@
   // This is useful to prevent the editor from watching large directories
   // that can cause performance issues, such as node_modules or .git directories.
   "files.watcherExclude": {
-    ".vscode/extensions/": true,
-    ".vscode-data-dir": true,
+    ".aider*": true,
+    ".vscode--User-Settings--TO-BE-COPIED--settings.json": true,
+    ".tmp-extensions--dir-cursor": true,
+    ".tmp-extensions--dir-vscode": true,
+    ".tmp-user-data-dir-cursor": true,
+    ".tmp-user-data-dir-vscode": true,
+
     // .NET specific watcher exclusions
     "target/": true,
+
     // Git related exclusions
     ".git/": true,
     // "**/.git/objects/**": true,
@@ -111,10 +119,12 @@
 
   "workbench.localHistory.exclude": {
     // Exclude specific files and directories from local history
-    "script-open-vscode-editor-with-local-extensions-only": true,
-    "script-update-local-vscode-extensions": true,
-    ".vscode/extensions/": true,
-    ".vscode-data-dir": true,
+    ".aider*": true,
+    ".tmp-extensions--dir-cursor": true,
+    ".tmp-extensions--dir-vscode": true,
+    ".tmp-user-data-dir-cursor": true,
+    ".tmp-user-data-dir-vscode": true,
+
     "target/": true,
     ".git/": true,
   },
@@ -382,8 +392,10 @@
   "FSharp.workspaceModePeekDeepLevel": 2,
   "FSharp.workspacePath": "${workspaceFolder}",
   "FSharp.excludeProjectDirectories": [
-    ".vscode/extensions",
-    ".vscode-data-dir",
+    ".tmp-extensions--dir-cursor",
+    ".tmp-extensions--dir-vscode",
+    ".tmp-user-data-dir-cursor",
+    ".tmp-user-data-dir-vscode",
     ".git",
     "paket-files",
     ".fable",

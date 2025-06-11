@@ -1,33 +1,34 @@
 {
-
   // To open "User Settings (JSON)" in VS Code:
   //    CTRL+SH+P + "Open User Settings (JSON)"
 
   // These settings are "user level settings" that are not allowed in the "Workspace settings" (.vscode/settings.json)
+
+  // Guidelines for VS Code customisation and preferences files:
+  //
+  //   A. For all SHARED project settings and preferences:
+  //      Use `.vscode/settings.json` for shared project settings that should remain consistent for all developers.
+  //
+  //   B. For all PERSONAL user settings and preferences: `.vscode-data-dir/User/`
+  //      Use `.vscode-data-dir/User/settings.json` for all personal customizations
+  //      that should remain private for each inidvidual developers.
+
+  "window.commandCenter": true,
+  // "workbench.colorTheme": "Cursor Dark Midnight",
 
   "window.restoreWindows": "all",
   "window.openFilesInNewWindow": "on",
   "window.autoDetectHighContrast": false,
   "window.newWindowDimensions": "inherit",
 
-
   "extensions.autoUpdate": "onlyEnabledExtensions",
   "extensions.autoCheckUpdates": true,
 
   "telemetry.telemetryLevel": "off",
 
-
   "security.workspace.trust.enabled": true,
   "security.workspace.trust.untrustedFiles": "open",
   // "security.workspace.trust.emptyWindow": true,
   "security.workspace.trust.startupPrompt": "always",
-  "roo-cline.allowedCommands": [
-    "npm test",
-    "npm install",
-    "tsc",
-    "git log",
-    "git diff",
-    "git show"
-  ],
 
 }
