@@ -13,11 +13,10 @@ packages/
 .gitcommit.txt
 
 # Visual Studio Code related: Misc. files
+.vscode
+
+# "aider" files - a CLI tool for LLM coding assistance
 .aider*
-.tmp-extensions--dir-cursor
-.tmp-extensions--dir-vscode
-.tmp-user-data-dir-cursor
-.tmp-user-data-dir-vscode
 
 # OS generated files (macOS, Windows)
 .DS_Store
@@ -29,5 +28,3 @@ Thumbs.db
 # Backup files (not needed in version control)
 *.bak
 
-# "aider" files - a CLI tool for LLM coding assistance
-.aider*
