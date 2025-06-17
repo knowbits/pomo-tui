@@ -8,8 +8,8 @@ Intent:
     • Idle --[s]--> Work (a countdown, default 25 minutes)
     • Work (running) --(when countdown reaches 0)--> Break (a countdown, default 5 minutes)
     • Break (running) --(when countdown reaches 0)--> Idle
-    • In Work or Break, pressing P pauses the session.
-    • In Pause state, press R to resume.
+    • In Work or Break, pressing S suspends the session.
+    • In Suspended state, press R to resume.
     • In Work or Break, pressing Esc asks if you want to cancel that session (stop & discard it), returning to Idle.
     • In Idle, pressing Esc asks if you want to quit.
     • H displays help.
@@ -20,7 +20,7 @@ Command-line Options:
   --break-length-min [n]: Set the break length to n minutes (default is 5)
 
 UI Layout (top to bottom):
-  1. Summary line showing accumulated time (mm:ss format) spent in Work, Break, Pause, and Idle.
+  1. Summary line showing accumulated time (mm:ss format) spent in Work, Break, Suspend, and Idle.
   2. "Sessions today:" line showing completed work sessions as 🍅 icons with count.
   3. A single-line current state display that shows the state and its timer.
   4. Bottom menu line that adapts to the current state. In Idle it is:
@@ -58,28 +58,28 @@ let todayKey = DateTime.Now.ToString("yyyy-MM-dd")
 type PomodoroState =
     | Work
     | Break
-    | Pause
+    | Suspend
     | Idle
 
 // ------------------------------------------------------------
 // Global Variables
 // ------------------------------------------------------------
 let mutable currentState = Idle
-// Holds the active state when pausing (Work or Break)
-let mutable pausedPrevState = Idle
+// Holds the active state when suspended (Work or Break)
+let mutable suspendedPrevState = Idle
 // Countdown timers for Work and Break sessions (in seconds)
 let mutable remainingTaskSeconds = 0
 let mutable remainingBreakSeconds = 0
-// Session timers for Idle and Pause (counting UP in seconds)
+// Session timers for Idle and Suspend (counting UP in seconds)
 let mutable idleSessionSeconds = 0
-let mutable pauseSessionSeconds = 0
+let mutable suspendSessionSeconds = 0
 // Count of sessions completed today (only if a Work session fully completes).
 let mutable pomodoroCount = 0
 
 // Accumulated total time (in seconds) for summary.
 let mutable totalWorkSeconds = 0
 let mutable totalBreakSeconds = 0
-let mutable totalPauseSeconds = 0
+let mutable totalSuspendSeconds = 0
 let mutable totalIdleSeconds = 0
 
 // Sound alert: OFF by default; can be enabled via command-line option.
@@ -152,10 +152,10 @@ let updateUI () =
     // 1. Summary line (show times for each state in mm:ss).
     AnsiConsole.MarkupLine(
         sprintf
-            "[bold cyan]Summary:[/] Work: %s | Break: %s | Pause: %s | Idle: %s"
+            "[bold cyan]Summary:[/] Work: %s | Break: %s | Suspend: %s | Idle: %s"
             (formatTime totalWorkSeconds)
             (formatTime totalBreakSeconds)
-            (formatTime totalPauseSeconds)
+            (formatTime totalSuspendSeconds)
             (formatTime totalIdleSeconds)
     )
     // 2. Sessions Today line.
@@ -167,13 +167,13 @@ let updateUI () =
         match currentState with
         | Work -> ("green", "Work", formatTime remainingTaskSeconds)
         | Break -> ("red", "Break", formatTime remainingBreakSeconds)
-        | Pause ->
+        | Suspend ->
             ("magenta",
-             (match pausedPrevState with
-              | Work -> "Work (Paused)"
-              | Break -> "Break (Paused)"
-              | _ -> "Paused"),
-             formatTime pauseSessionSeconds)
+             (match suspendedPrevState with
+              | Work -> "Work (Suspended)"
+              | Break -> "Break (Suspended)"
+              | _ -> "Suspended"),
+             formatTime suspendSessionSeconds)
         | Idle -> ("yellow", "Idle", formatTime idleSessionSeconds)
 
     AnsiConsole.MarkupLine(sprintf "[%s]%s[/] : %s" stateColor stateText timerDisplay)
@@ -183,10 +183,10 @@ let updateUI () =
 
     let menuLine =
         match currentState with
-        | Idle -> sprintf "%s Commands: s (start session) | h (help) | Esc (quit)" soundIcon
-        | Work -> sprintf "%s Commands: p (pause) | Esc (cancel) | h (help)" soundIcon
-        | Break -> sprintf "%s Commands: p (pause) | Esc (cancel) | h (help)" soundIcon
-        | Pause -> sprintf "%s Commands: r (resume) | h (help)" soundIcon
+        | Idle -> sprintf "%s MENU: S\u0332tart | H\u0332elp | Q\u0332uit" soundIcon
+        | Work -> sprintf "%s MENU: S\u0332uspend | C\u0332ancel | H\u0332elp" soundIcon
+        | Break -> sprintf "%s MENU: S\u0332uspend | C\u0332ancel | H\u0332elp" soundIcon
+        | Suspend -> sprintf "%s MENU: R\u0332esume | H\u0332elp" soundIcon
 
     AnsiConsole.MarkupLine(sprintf "[bold cyan]%s[/]" menuLine)
 
@@ -196,10 +196,10 @@ let updateUI () =
 let displayHelp () =
     Console.Clear()
     AnsiConsole.MarkupLine("[bold cyan]Pomodoro CLI - Command Help[/]")
-    AnsiConsole.MarkupLine("[bold green]Idle state:[/] s (start session), h (help), Esc (quit)")
-    AnsiConsole.MarkupLine("[bold green]Work state:[/] p (pause), Esc (cancel session), h (help)")
-    AnsiConsole.MarkupLine("[bold green]Break state:[/] p (pause), Esc (cancel session), h (help)")
-    AnsiConsole.MarkupLine("[bold green]Pause state:[/] r (resume), h (help)")
+    AnsiConsole.MarkupLine("[bold green]Idle state:[/] Start (s), Help (h), Quit (q)")
+    AnsiConsole.MarkupLine("[bold green]Work state:[/] Suspend (s), Cancel (c), Help (h)")
+    AnsiConsole.MarkupLine("[bold green]Break state:[/] Suspend (s), Cancel (c), Help (h)")
+    AnsiConsole.MarkupLine("[bold green]Suspend state:[/] Resume (r), Help (h)")
     Console.WriteLine("Press any key to return...")
     Console.ReadKey(true) |> ignore
 
@@ -238,9 +238,9 @@ let rec startLoop () =
     | Break ->
         remainingBreakSeconds <- remainingBreakSeconds - 1
         totalBreakSeconds <- totalBreakSeconds + 1
-    | Pause ->
-        pauseSessionSeconds <- pauseSessionSeconds + 1
-        totalPauseSeconds <- totalPauseSeconds + 1
+    | Suspend ->
+        suspendSessionSeconds <- suspendSessionSeconds + 1
+        totalSuspendSeconds <- totalSuspendSeconds + 1
     | Idle ->
         idleSessionSeconds <- idleSessionSeconds + 1
         totalIdleSeconds <- totalIdleSeconds + 1
@@ -260,7 +260,7 @@ let rec startLoop () =
             idleSessionSeconds <- 0 // reset idle timer
             // Beep: 2 short beeps for starting a Work session.
             beepTaskSession ()
-        | Idle, ConsoleKey.Escape ->
+        | Idle, ConsoleKey.Q ->
             Console.Write("Quit? (y/n): ")
 
             if Console.ReadLine() = "y" then
@@ -268,12 +268,12 @@ let rec startLoop () =
         | Idle, ConsoleKey.H -> displayHelp ()
 
         // ---------- Work State ----------
-        | Work, ConsoleKey.P ->
-            // Pause the Work session.
-            pausedPrevState <- Work
-            currentState <- Pause
-            pauseSessionSeconds <- 0 // reset pause timer
-        | Work, ConsoleKey.Escape ->
+        | Work, ConsoleKey.S ->
+            // Suspend the Work session.
+            suspendedPrevState <- Work
+            currentState <- Suspend
+            suspendSessionSeconds <- 0 // Reset suspend timer
+        | Work, ConsoleKey.C ->
             Console.Write("Cancel current Work session? (y/n): ")
 
             if Console.ReadLine() = "y" then
@@ -283,11 +283,11 @@ let rec startLoop () =
         | Work, ConsoleKey.H -> displayHelp ()
 
         // ---------- Break State ----------
-        | Break, ConsoleKey.P ->
-            pausedPrevState <- Break
-            currentState <- Pause
-            pauseSessionSeconds <- 0
-        | Break, ConsoleKey.Escape ->
+        | Break, ConsoleKey.S ->
+            suspendedPrevState <- Break
+            currentState <- Suspend
+            suspendSessionSeconds <- 0
+        | Break, ConsoleKey.C ->
             Console.Write("Cancel current Break session? (y/n): ")
 
             if Console.ReadLine() = "y" then
@@ -296,12 +296,12 @@ let rec startLoop () =
                 remainingBreakSeconds <- breakDuration
         | Break, ConsoleKey.H -> displayHelp ()
 
-        // ---------- Pause State ----------
-        | Pause, ConsoleKey.R ->
-            // Resume the paused session.
-            currentState <- pausedPrevState
-            pauseSessionSeconds <- 0
-        | Pause, ConsoleKey.H -> displayHelp ()
+        // ---------- Suspend State ----------
+        | Suspend, ConsoleKey.R ->
+            // Resume the suspended session.
+            currentState <- suspendedPrevState
+            suspendSessionSeconds <- 0
+        | Suspend, ConsoleKey.H -> displayHelp ()
         | _ -> ()
 
     Thread.Sleep(1000)
