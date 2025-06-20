@@ -1,8 +1,7 @@
 # pomo-tui - A terminal utility for "The Pomodoro Technique"
 
 > Inspired by the "pomodori-cli" (pom) CLI utility by NRK.no
-
-> - Repo: <https://github.com/nrkno/pomodoro-cli>
+> Repo: <https://github.com/nrkno/pomodoro-cli>
 
 ## TODO list
 
