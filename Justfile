@@ -6,7 +6,7 @@
 # ==========================================================\
 
 # Define the .NET SDK version to use (optional, but good practice)
-# DOTNET_SDK_VERSION := 8.0.100
+# DOTNET_SDK_VERSION := 9.0.301
 
 # Define the target directory for build outputs
 TARGET_DIR := "./target"
@@ -98,7 +98,7 @@ deploy-on-linux: build
     @echo "You can now run 'pomo-tui'."
 
 
-# Build and run a "debug version" (in folder './target/bin/Debug/net8.0/')
+# Build and run a "debug version" (in folder './target/bin/Debug/net9.0/')
 run: init
     @echo "Building and Running application from source..."
     dotnet run --project {{ PROJECT_FILE }}

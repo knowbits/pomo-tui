@@ -13,9 +13,9 @@ Some missing features are:
 
 ### Ubuntu
 
-1. Install "DotNet SDK" version 8.0 on Ubuntu:
+1. Install "DotNet SDK" version 9.0 on Ubuntu:
    - `sudo apt update`
-   - `sudo apt install dotnet-sdk-8.0`
+   - `sudo apt install dotnet-sdk-9.0`
    - NOTE: The installation requires ~ 450MB.
 
 2. Clone this repository:
