@@ -1,0 +1,3 @@
+[tools]
+# Latest 9.0.x SDK; project targets net9.0. Upgrade to .NET 10: see TODO--dotnet-10-upgrade.md
+dotnet = "9.0.318"

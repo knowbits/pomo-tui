@@ -6,7 +6,7 @@
 # ==========================================================\
 
 # Define the .NET SDK version to use (optional, but good practice)
-# DOTNET_SDK_VERSION := 9.0.301
+# DOTNET_SDK_VERSION := 9.0.318  (informational; the pin lives in mise.toml)
 
 # Define the target directory for build outputs
 TARGET_DIR := "./target"
