@@ -6,7 +6,7 @@
 # ==========================================================\
 
 # Define the .NET SDK version to use (optional, but good practice)
-# DOTNET_SDK_VERSION := 9.0.318  (informational; the pin lives in mise.toml)
+# .NET SDK: pinned in mise.toml; the project targets net10.0 (LTS)
 
 # Define the target directory for build outputs
 TARGET_DIR := "./target"
@@ -98,7 +98,7 @@ deploy-on-linux: build
     @echo "You can now run 'pomo-tui'."
 
 
-# Build and run a "debug version" (in folder './target/bin/Debug/net9.0/')
+# Build and run a "debug version" (in folder './target/bin/Debug/net10.0/')
 run: init
     @echo "Building and Running application from source..."
     dotnet run --project {{ PROJECT_FILE }}
@@ -114,4 +114,5 @@ run: init
 # as "empty recipe -- nothing tested" -- fill it in once the repo has a fast test gate.
 [doc("Fast tests after a dependency update -- run by COMMON/scripts/deps-update-all-repos.sh")]
 test-after-deps-update *CHANGED:
-    @: # no fast tests yet (no test project; NuGet packages are not updated by the script)
+    # No test project yet: a clean Release build proves the SDK and packages still compile it.
+    dotnet build {{ PROJECT_FILE }} --configuration Release -nologo

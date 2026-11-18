@@ -13,9 +13,8 @@ Some missing features are:
 
 ### Ubuntu
 
-1. Install "DotNet SDK" version 9.0 on Ubuntu:
-   - `sudo apt update`
-   - `sudo apt install dotnet-sdk-9.0`
+1. Install the .NET SDK with mise (pinned in `mise.toml`; the app targets .NET 10):
+   - `mise install`
    - NOTE: The installation requires ~ 450MB.
 
 2. Clone this repository:

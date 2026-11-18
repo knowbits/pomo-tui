@@ -1,5 +1,7 @@
 # TODO — upgrade pomo-tui to .NET 10
 
+**Done 2026-11-18:** net10.0 target, SDK 11.0.100 (mise), Spectre.Console 0.57.2, Fantomas 8.1.1 (file reformatted); published binary verified.
+
 Current: SDK pinned to `9.0.318` in `mise.toml`, `<TargetFramework>net9.0</TargetFramework>` in
 `pomo-tui.fsproj`. Newest stable SDK when written: `10.0.401` (11.0 is preview only — do not use).
 .NET 10 is the LTS line; .NET 9 is STS and reaches end of support earlier — check
@@ -7,10 +9,10 @@ https://dotnet.microsoft.com/platform/support/policy/dotnet-core before deciding
 
 ## Change set
 
-- [ ] `mise.toml`: `dotnet = "10.0.<latest 10.0.x>"` (`mise ls-remote dotnet | rg '^10\.0\.'`).
-- [ ] `pomo-tui.fsproj`: `net9.0` -> `net10.0`.
-- [ ] `Justfile`: update the `DOTNET_SDK_VERSION` comment.
-- [ ] `Readme.md`: install step still says `dotnet-sdk-9.0` (apt); change to the 10.0 package / mise.
+- [x] `mise.toml`: `dotnet = "10.0.<latest 10.0.x>"` (`mise ls-remote dotnet | rg '^10\.0\.'`).
+- [x] `pomo-tui.fsproj`: `net9.0` -> `net10.0`.
+- [x] `Justfile`: update the `DOTNET_SDK_VERSION` comment.
+- [x] `Readme.md`: install step still says `dotnet-sdk-9.0` (apt); change to the 10.0 package / mise.
 
 ## Things to check (caveats)
 

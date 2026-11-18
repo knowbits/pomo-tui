@@ -409,9 +409,7 @@ let displaySettings () =
     AnsiConsole.MarkupLine("")
 
     AnsiConsole.MarkupLine(
-        sprintf
-            "⏱️  [bold]Work session length:[/] [white]%d[/] min  [grey](set with --task-length-min)[/]"
-            taskLengthMin
+        sprintf "⏱️  [bold]Work session length:[/] [white]%d[/] min  [grey](set with --task-length-min)[/]" taskLengthMin
     )
 
     AnsiConsole.MarkupLine(
@@ -505,20 +503,22 @@ let displaySettings () =
 // State Persistence: Save/Load full state per day
 // ------------------------------------------------------------
 type PomodoroDayState =
-    { PomodoroCount: int
-      TotalWorkSeconds: int
-      TotalBreakSeconds: int
-      TotalSuspendSeconds: int
-      TotalIdleSeconds: int
-      RemainingTaskSeconds: int
-      RemainingBreakSeconds: int
-      IdleSessionSeconds: int
-      SuspendSessionSeconds: int
-      CurrentState: PomodoroState
-      SuspendedPrevState: PomodoroState
-      LongBreakLengthMin: int
-      PomosBeforeLongBreak: int
-      WorkdayLengthStr: string }
+    {
+        PomodoroCount: int
+        TotalWorkSeconds: int
+        TotalBreakSeconds: int
+        TotalSuspendSeconds: int
+        TotalIdleSeconds: int
+        RemainingTaskSeconds: int
+        RemainingBreakSeconds: int
+        IdleSessionSeconds: int
+        SuspendSessionSeconds: int
+        CurrentState: PomodoroState
+        SuspendedPrevState: PomodoroState
+        LongBreakLengthMin: int
+        PomosBeforeLongBreak: int
+        WorkdayLengthStr: string
+    }
 
 let getTodayStatePath () =
     let appDataPath = getAppDataPath ()
@@ -528,20 +528,22 @@ let getTodayStatePath () =
 
 let saveDayState () =
     let state =
-        { PomodoroCount = pomodoroCount
-          TotalWorkSeconds = totalWorkSeconds
-          TotalBreakSeconds = totalBreakSeconds
-          TotalSuspendSeconds = totalSuspendSeconds
-          TotalIdleSeconds = totalIdleSeconds
-          RemainingTaskSeconds = remainingTaskSeconds
-          RemainingBreakSeconds = remainingBreakSeconds
-          IdleSessionSeconds = idleSessionSeconds
-          SuspendSessionSeconds = suspendSessionSeconds
-          CurrentState = currentState
-          SuspendedPrevState = suspendedPrevState
-          LongBreakLengthMin = longBreakLengthMin
-          PomosBeforeLongBreak = pomosBeforeLongBreak
-          WorkdayLengthStr = workdayLengthStr }
+        {
+            PomodoroCount = pomodoroCount
+            TotalWorkSeconds = totalWorkSeconds
+            TotalBreakSeconds = totalBreakSeconds
+            TotalSuspendSeconds = totalSuspendSeconds
+            TotalIdleSeconds = totalIdleSeconds
+            RemainingTaskSeconds = remainingTaskSeconds
+            RemainingBreakSeconds = remainingBreakSeconds
+            IdleSessionSeconds = idleSessionSeconds
+            SuspendSessionSeconds = suspendSessionSeconds
+            CurrentState = currentState
+            SuspendedPrevState = suspendedPrevState
+            LongBreakLengthMin = longBreakLengthMin
+            PomosBeforeLongBreak = pomosBeforeLongBreak
+            WorkdayLengthStr = workdayLengthStr
+        }
 
     let options = JsonSerializerOptions()
     options.Converters.Add(JsonFSharpConverter())
